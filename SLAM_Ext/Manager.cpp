@@ -345,9 +345,9 @@ void Manager::InitialiseEnergy( Cell& C )
 	}
 	double delta = 0.005;
 	//double sig =2.3231241;
-	double sig =1.8231241;
+	double sig =2.0231241;
 	Eigen::Vector3d v;
-	v << 2.2,-0.23,-2.5;
+	v << 2.1,-0.2312,-1.512;
 	//v << 0,0,4.;
 	printf("TestPointCharg%20.12lf\t%20.12lf\t%20.12lf\n",v(0),v(1),v(2));
 	printf("Sigma\t%20.12lf\n",sig);
@@ -385,7 +385,7 @@ void Manager::InitialiseEnergy( Cell& C )
 	v(0) = v(0) - delta;
 	fdm_x[1] = Manager::set_h_matrix_real_pc( lp, v, sig, ind, 0 );
 	v(0) = v(0) + delta;
-	res_x = (fdm_x[0] - fdm_x[1])/2./delta;
+	res_x = (fdm_x[0] - fdm_x[1])/2./delta;					// ( Forward - Backward ) / ( 2 * displs )
 	for(int i=0;i<4;i++)
 	{	for(int j=0;j<4;j++)
 			printf("%20.12lf\t",res_x(i,j));
@@ -424,9 +424,9 @@ void Manager::InitialiseEnergy( Cell& C )
 
 //v << 1,2,-3;
 //v << 0,0,3;
-
-	cout << "OnSite" << endl;
-	Manager::set_h_matrix_real_pc_derivative( lp, v, sig, ind ,0 );
+	////	////	////	////	////	////	////	////	////	////	////	////	////	////	////
+	cout << "First RealSpace Derivative - OnSite (Analytical)" << endl;
+	Manager::set_h_matrix_real_pc_derivative( lp, v, sig, ind ,0 );	////	////	////	////	////	////	////
 
 	cout << "grad h_pc_x" << endl;
 	for(int i=0;i<4;i++)
@@ -446,9 +446,15 @@ void Manager::InitialiseEnergy( Cell& C )
 			printf("%20.12lf\t",this->real_lp_h_pc_z[ind][0](i,j));
 		cout << endl;
 	}
+	cout << "<<< DONE >>> First RealSpace Derivative - OnSite (Analytical)" << endl;
+	cout << endl;
+	cout << endl;
 	cout << endl;
 
-	cout << "OnSite Z Forward ... " << endl;
+
+
+	////	////	////	////	////	////	////	////	////	////	////	////	////	////	////
+	cout << "FDM of 1st Derivative - Z Forward ... " << endl;
 	v(2) = v(2) + delta;
 	Manager::set_h_matrix_real_pc_derivative( lp, v, sig, ind ,0 );
 	v(2) = v(2) - delta;
@@ -473,7 +479,7 @@ void Manager::InitialiseEnergy( Cell& C )
 	}
 	cout << endl;
 
-	cout << "OnSite Z Backward ... " << endl;
+	cout << "FDM of 1st Derivative - Z Backward ... " << endl;
 	v(2) = v(2) - delta;
 	Manager::set_h_matrix_real_pc_derivative( lp, v, sig, ind ,0 );
 	v(2) = v(2) + delta;
@@ -524,7 +530,7 @@ void Manager::InitialiseEnergy( Cell& C )
 	cout << "Vector : " << v << endl;
 	cout << endl;
 
-	cout << "OnSite X Forward ... " << endl;
+	cout << "FDM of 1st Derivative - X Forward ... " << endl;
 	v(0) = v(0) + delta;
 	Manager::set_h_matrix_real_pc_derivative( lp, v, sig, ind ,0 );
 	v(0) = v(0) - delta;
@@ -549,7 +555,7 @@ void Manager::InitialiseEnergy( Cell& C )
 	}
 	cout << endl;
 
-	cout << "OnSite X Backward ... " << endl;
+	cout << "FDM of 1st Derivative - X Backward ... " << endl;
 	v(0) = v(0) - delta;
 	Manager::set_h_matrix_real_pc_derivative( lp, v, sig, ind ,0 );
 	v(0) = v(0) + delta;
@@ -582,7 +588,7 @@ void Manager::InitialiseEnergy( Cell& C )
 	cout << "Vector : " << v << endl;
 	cout << endl;
 
-	cout << "OnSite Y Forward ... " << endl;
+	cout << "FDM of 1st Derivative - Y Forward ... " << endl;
 	v(1) = v(1) + delta;
 	Manager::set_h_matrix_real_pc_derivative( lp, v, sig, ind ,0 );
 	v(1) = v(1) - delta;
@@ -607,7 +613,7 @@ void Manager::InitialiseEnergy( Cell& C )
 	}
 	cout << endl;
 
-	cout << "OnSite Y Backward ... " << endl;
+	cout << "FDM of 1st Derivative - Y Backward ... " << endl;
 	v(1) = v(1) - delta;
 	Manager::set_h_matrix_real_pc_derivative( lp, v, sig, ind ,0 );
 	v(1) = v(1) + delta;
