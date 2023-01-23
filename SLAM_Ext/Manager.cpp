@@ -2,7 +2,7 @@
 
 
 // Debugging Defines
-//#define DERIVATIVE_CHECK
+#define DERIVATIVE_CHECK
 //#define SHOW_LP_MATRIX
 //#define LPLP_CHECK
 //#define SCF_LOG_DEBUG
@@ -349,7 +349,10 @@ Eigen::Vector3d R;
 //R << 0, 0, 11.87;		// Err ...	// Integrals ----> Discontinuous part
 
 
-R << -3.2,0.52,4.3;
+
+//R << -3.2,0.52,4.3;
+R << -2.2,0.52,1.3;
+cout << "Testing Coordinate: " << R << endl;
 
 // -8.4 X
 
