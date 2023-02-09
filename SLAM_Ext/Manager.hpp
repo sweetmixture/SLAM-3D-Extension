@@ -17,67 +17,56 @@ class Manager // Interaction Manager
 {
 ////	////	////	////	////	////	////	////
 // lp - pc (point charge)
-Eigen::Matrix4d real_lp_h_pc[MX_C][MX_C];
+Eigen::Matrix4d real_lp_h_pc[MX_C][MX_C];	// test use
+Eigen::Matrix4d reci_lp_h_pc[MX_C][MX_C];	// test use
 
-Eigen::Matrix4d reci_lp_h_pc[MX_C][MX_C];
+Eigen::Matrix4d real_lp_h_pc_x[MX_C][MX_C];	// test use
+Eigen::Matrix4d real_lp_h_pc_y[MX_C][MX_C];	// test use
+Eigen::Matrix4d real_lp_h_pc_z[MX_C][MX_C];	// test use
 
-Eigen::Matrix4d real_lp_h_pc_x[MX_C][MX_C];
-Eigen::Matrix4d real_lp_h_pc_y[MX_C][MX_C];
-Eigen::Matrix4d real_lp_h_pc_z[MX_C][MX_C];
-
-Eigen::Matrix4d reci_lp_h_pc_x[MX_C][MX_C];
-Eigen::Matrix4d reci_lp_h_pc_y[MX_C][MX_C];
-Eigen::Matrix4d reci_lp_h_pc_z[MX_C][MX_C];
+Eigen::Matrix4d reci_lp_h_pc_x[MX_C][MX_C];	// test use
+Eigen::Matrix4d reci_lp_h_pc_y[MX_C][MX_C];	// test use
+Eigen::Matrix4d reci_lp_h_pc_z[MX_C][MX_C];	// test use
 
 // lp - ps (point shell)
-Eigen::Matrix4d real_lp_h_ps[2][MX_C][MX_C];
-
-Eigen::Matrix4d real_lp_h_ps_x[2][MX_C][MX_C];
-Eigen::Matrix4d real_lp_h_ps_y[2][MX_C][MX_C];
-Eigen::Matrix4d real_lp_h_ps_z[2][MX_C][MX_C];
+//Eigen::Matrix4d real_lp_h_ps[2][MX_C][MX_C];
+//Eigen::Matrix4d real_lp_h_ps_x[2][MX_C][MX_C];
+//Eigen::Matrix4d real_lp_h_ps_y[2][MX_C][MX_C];
+//Eigen::Matrix4d real_lp_h_ps_z[2][MX_C][MX_C];
 
 // lp - lp (core)
-Eigen::Matrix4d real_lp_h_lc[MX_C][MX_C];
-
-Eigen::Matrix4d real_lp_h_lc_x[MX_C][MX_C];
-Eigen::Matrix4d real_lp_h_lc_y[MX_C][MX_C];
-Eigen::Matrix4d real_lp_h_lc_z[MX_C][MX_C];
+//Eigen::Matrix4d real_lp_h_lc[MX_C][MX_C];
+//Eigen::Matrix4d real_lp_h_lc_x[MX_C][MX_C];
+//Eigen::Matrix4d real_lp_h_lc_y[MX_C][MX_C];
+//Eigen::Matrix4d real_lp_h_lc_z[MX_C][MX_C];
 
 // lp - lp
-Eigen::Matrix4d real_lp_h_lp[MX_C];
-
-Eigen::Matrix4d real_lp_h_lp_x[MX_C][MX_C];
-Eigen::Matrix4d real_lp_h_lp_y[MX_C][MX_C];
-Eigen::Matrix4d real_lp_h_lp_z[MX_C][MX_C];
-
-Eigen::Matrix4d real_lp_h_lp_xx[MX_C][MX_C];
-Eigen::Matrix4d real_lp_h_lp_xy[MX_C][MX_C];
-Eigen::Matrix4d real_lp_h_lp_xz[MX_C][MX_C];
-Eigen::Matrix4d real_lp_h_lp_yx[MX_C][MX_C];
-Eigen::Matrix4d real_lp_h_lp_yy[MX_C][MX_C];
-Eigen::Matrix4d real_lp_h_lp_yz[MX_C][MX_C];
-Eigen::Matrix4d real_lp_h_lp_zx[MX_C][MX_C];
-Eigen::Matrix4d real_lp_h_lp_zy[MX_C][MX_C];
-Eigen::Matrix4d real_lp_h_lp_zz[MX_C][MX_C];
+//Eigen::Matrix4d real_lp_h_lp[MX_C];
+//Eigen::Matrix4d real_lp_h_lp_x[MX_C][MX_C];
+//Eigen::Matrix4d real_lp_h_lp_y[MX_C][MX_C];
+//Eigen::Matrix4d real_lp_h_lp_z[MX_C][MX_C];
+Eigen::Matrix4d real_lp_h_lp_xx[MX_C][MX_C];	// test use
+Eigen::Matrix4d real_lp_h_lp_xy[MX_C][MX_C];	// test use
+Eigen::Matrix4d real_lp_h_lp_xz[MX_C][MX_C];	// test use
+Eigen::Matrix4d real_lp_h_lp_yx[MX_C][MX_C];	// test use
+Eigen::Matrix4d real_lp_h_lp_yy[MX_C][MX_C];	// test use
+Eigen::Matrix4d real_lp_h_lp_yz[MX_C][MX_C];	// test use
+Eigen::Matrix4d real_lp_h_lp_zx[MX_C][MX_C];	// test use
+Eigen::Matrix4d real_lp_h_lp_zy[MX_C][MX_C];	// test use
+Eigen::Matrix4d real_lp_h_lp_zz[MX_C][MX_C];	// test use
 ////	////	////	////	////	////	////	////
 
-
-
-Eigen::Matrix4d man_matrix4d_h_real_ws[2];			// Workspace H matrix real part
+Eigen::Matrix4d man_matrix4d_h_real_ws[2];			// Workspace H matrix real part	[0] ws ; [1] out
 
 Eigen::Matrix4d man_matrix4d_h_real_derivative_ws[3];		// Workspace H matrix real derivative
-Eigen::Matrix4d man_matrix4d_h_real_derivative_out[3];
+Eigen::Matrix4d man_matrix4d_h_real_derivative_out[3];		// Out x,y,z
 
-Eigen::Matrix4d man_matrix4d_h_real_derivative2_ws[9];		// Workspace H matrix real derivative2
-Eigen::Matrix4d man_matrix4d_h_real_derivative2_out[9];
+Eigen::Matrix4d man_matrix4d_h_real_derivative2_ws[6];		// Workspace H matrix real derivative2
+Eigen::Matrix4d man_matrix4d_h_real_derivative2_out[6];		// Out xx,xy,xz,yy,yz,zz;
 
-Eigen::Matrix4d man_matrix4d_h_reci_self_ws;
-Eigen::Matrix4d man_matrix4d_h_reci_ws[2];
-Eigen::Matrix4d man_matrix4d_h_reci_out[2];
-
-
-
-
+Eigen::Matrix4d man_matrix4d_h_reci_self_ws;			// Workspace H matrix self
+Eigen::Matrix4d man_matrix4d_h_reci_ws[2];			// Workspace [0] cos ; [1] sin
+Eigen::Matrix4d man_matrix4d_h_reci_out[2];			// Out       [0] cos ; [1] sin
 
 /* 
 	Storage for H Matrix (E) - LP vs PointCharge Interaction (core/shell/lp core)
@@ -88,11 +77,31 @@ Eigen::Matrix4d LPLP_H_Real[MX_C][MX_C];	// Save Monopolar Contribution LP <--->
 Eigen::Matrix4d LPC_H_Reci[MX_C][MX_C][2];	// same convention ... if 'i=j' with h'=k'=l' - reciprocal self (i.e., lone pair electron interacting with its core in the central sublattice)
 Eigen::Matrix4d LPLP_H_Reci[MX_C][MX_C];
 
+//scf_dh_x_matrix_vs_sp_ion_dipole
+// Saving Dipole - Dipole interaction term for later Geometric Derivative Calculations
+Eigen::Matrix4d LPLP_H_Real_Aux[MX_C][MX_C][3];	// [0..2] : [0] x, [1] y, [2] z; - Important for calculating eigenvector derivatives
+Eigen::Matrix4d LPLP_H_Reci_Aux[MX_C][MX_C];
 
+// Saving EigenVector (Coefficient) Derivatives
+Eigen::Vector4d LP_Evec_Derivative[MX_C][MX_C][2];
+/*
+	Storage for H derivatives
+*/
+Eigen::Matrix4d LPC_H_Real_Derivative[MX_C][MX_C][2][3];	// [i][j][0:core,1:shell][0:x,1:y,2:z] for 'i'---->'j' ... convention
+Eigen::Matrix4d LPLP_H_Real_Derivative[MX_C][MX_C][3];
+
+Eigen::Matrix4d LP_H_Self_Derivative[MX_C][3];
+
+Eigen::Matrix4d LPC_H_Reci_Derivative[MX_C][MX_C][2][3];
+Eigen::Matrix4d LPLP_H_Reci_Derivative[MX_C][MX_C][3];
+
+Eigen::Vector3d LPC_H_Real_gd[MX_C][2];	// Temopral geometric derivative (gs) saving
+Eigen::Vector3d LPLP_H_Real_gd[MX_C];
+Eigen::Vector3d LPC_H_Reci_gd[MX_C][2];
+Eigen::Vector3d LPLP_H_Reci_gd[MX_C];
 //Eigen::Matrix4d LPLP_H_Real_x[MX_C][MX_C];	// Save Dipolar   Contribution LP <---> LP
 //Eigen::Matrix4d LPLP_H_Real_y[MX_C][MX_C];
 //Eigen::Matrix4d LPLP_H_Real_z[MX_C][MX_C];
-
 
 std::vector<double> man_scf_lp_eval;		// For the Use of SCF
 std::vector<double> man_scf_lp_real_energy;
@@ -153,12 +162,13 @@ void set_h_matrix_reci_derivative_sin( LonePair* lp, const Eigen::Vector3d& G, c
 // ACTUAL USE - H (E) Matrix Calculations - Internal Uses in " CoulombLonePairReal " below
 void support_h_matrix_real( const LonePair* lp, const double& sigma, const Eigen::Vector3d& Rij, /* in/out */ Eigen::Matrix4d& h_mat_ws, Eigen::Matrix4d& h_mat_out );
 void support_h_matrix_real_derivative( const LonePair* lp, const double& sigma, const Eigen::Vector3d& Rij, /* workspace */ Eigen::Matrix4d (&h_mat_ws)[3], /* out */ Eigen::Matrix4d (&h_mat_out)[3] );
+void support_h_matrix_real_derivative2( const LonePair* lp, const double& sigma, const Eigen::Vector3d& Rij, /* workspace */ Eigen::Matrix4d (&h_mat_ws)[6], /* out */ Eigen::Matrix4d (&h_mat_out)[6] );
 void set_h_matrix_real( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector, const bool is_first_scf );
 void support_h_matrix_reci( const LonePair* lp, const Eigen::Vector3d& G, /* workspace */ Eigen::Matrix4d (&h_mat_ws)[2], /* out */ Eigen::Matrix4d (&h_mat_out)[2] );
 void set_h_matrix_reci( Cell& C, const int i, const int j, const Eigen::Vector3d& G, const bool is_first_scf );
 
-
-
+void set_h_matrix_real_derivative( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector, const bool is_first_iter );
+void set_h_matrix_reci_derivative( Cell& C, const int i, const int j, const Eigen::Vector3d& G, const bool is_first_iter );
 
 
 

@@ -1639,7 +1639,7 @@ void Manager::InitialiseLonePairCalculation_Energy( Cell& C , const bool is_firs
 			LPLP_H_Reci[j][k].setZero();	// Interaction of LP<--->LP Reciprocal
 	
 			// For Geometric Derivative Calculation Later...
-			LPLP_H_Real_Aux[j][k][0].setZero(); LPLP_H_Real_Aux[j][k][1].setZero(); LPLP_H_Real_Aux[j][k][2].setZero();
+			LPLP_H_Real_Dipole[j][k][0].setZero(); LPLP_H_Real_Dipole[j][k][1].setZero(); LPLP_H_Real_Dipole[j][k][2].setZero();
 			//LPLP_H_Reci_Dipole[j][k][0].setZero(); LPLP_H_Reci_Dipole[j][k][1].setZero(); LPLP_H_Reci_Dipole[j][k][2].setZero();
 		}
 	}
@@ -2132,9 +2132,9 @@ void Manager::set_h_matrix_real( Cell& C, const int i, const int j, const Eigen:
 		//MAKE SURE THE SIGN IS CORRECT!!!
 
 		// * Save Dipolar Terms ... For Geometric Derivative Calculation Later...
-		this->LPLP_H_Real_Aux[i][j][0] += factor * this->man_matrix4d_h_real_derivative_out[0];
-		this->LPLP_H_Real_Aux[i][j][1] += factor * this->man_matrix4d_h_real_derivative_out[1];
-		this->LPLP_H_Real_Aux[i][j][2] += factor * this->man_matrix4d_h_real_derivative_out[2];
+		this->LPLP_H_Real_Dipole[i][j][0] += factor * this->man_matrix4d_h_real_derivative_out[0];
+		this->LPLP_H_Real_Dipole[i][j][1] += factor * this->man_matrix4d_h_real_derivative_out[1];
+		this->LPLP_H_Real_Dipole[i][j][2] += factor * this->man_matrix4d_h_real_derivative_out[2];
 
 #ifdef LPLP_CHECK
 std::cout << "LPLP+CHECK" << std::endl;
@@ -2535,8 +2535,6 @@ void Manager::set_h_matrix_reci( Cell& C, const int i, const int j, const Eigen:
 			}
 		}
 
-		
-
 	}
 	return;
 }
@@ -2654,10 +2652,13 @@ void Manager::set_h_matrix_real_derivative( Cell& C, const int i, const int j, c
 {
 	const std::string type_i = C.AtomList[i]->type;
 	const std::string type_j = C.AtomList[j]->type;
-	double lpi_cf[4], lpj_cf[4];
+	double lp_cf[4], lpi_cf[4], lpj_cf[4];
+	double dx,dy,dz;
 	double factor;
 	
 	Eigen::Vector3d Rij;
+
+	dx = dy = dz = 0.;
 	
 	if( type_i == "lone" && type_j == "core" )
 	{	
@@ -2668,10 +2669,25 @@ void Manager::set_h_matrix_real_derivative( Cell& C, const int i, const int j, c
 		factor = 0.5 * lp->lp_charge * C.AtomList[j]->charge;
 
 		// reason for '-' sign: the derivative is w.r.t the displs of 'j'. To make it for 'i' ... sign must be inverted
-		LPC_H_Real_Derivative[i][j][0][0] -= factor * this->man_matrix4d_h_real_derivative_out[0];	
-		LPC_H_Real_Derivative[i][j][0][1] -= factor * this->man_matrix4d_h_real_derivative_out[1];	
-		LPC_H_Real_Derivative[i][j][0][2] -= factor * this->man_matrix4d_h_real_derivative_out[2];	// pair geometric derivatives must be considered later
-		// eigenvectors of (i) use									
+		LPC_H_Real_Derivative[i][j][0][0] -= factor * this->man_matrix4d_h_real_derivative_out[0];	LPC_H_Real_Derivative[j][i][0][0] += factor * this->man_matrix4d_h_real_derivative_out[0];
+		LPC_H_Real_Derivative[i][j][0][1] -= factor * this->man_matrix4d_h_real_derivative_out[1];	LPC_H_Real_Derivative[j][i][0][1] += factor * this->man_matrix4d_h_real_derivative_out[1];
+		LPC_H_Real_Derivative[i][j][0][2] -= factor * this->man_matrix4d_h_real_derivative_out[2];	LPC_H_Real_Derivative[j][i][0][2] += factor * this->man_matrix4d_h_real_derivative_out[2];
+
+		lp->GetEvecGS( lp_cf );
+
+		// E Derivative Evaluation ... displacements on (j)
+		for(int u=0;u<4;u++)
+		{	for(int v=0;v<4;v++)
+			{	dx += lp_cf[u]*lp_cf[v]*factor * this->man_matrix4d_h_real_derivative_out[0](u,v);
+				dy += lp_cf[u]*lp_cf[v]*factor * this->man_matrix4d_h_real_derivative_out[1](u,v);
+				dz += lp_cf[u]*lp_cf[v]*factor * this->man_matrix4d_h_real_derivative_out[2](u,v);
+			}// end u
+		}// end v
+
+		// reason for '-' sign: the derivative is w.r.t the displs of 'j'. To make it for 'i' ... sign must be inverted
+		LPC_H_Real_gd[i][0](0) -= dx;	LPC_H_Real_gd[j][0](0) += dx;
+		LPC_H_Real_gd[i][0](1) -= dy;	LPC_H_Real_gd[j][0](1) += dy;
+		LPC_H_Real_gd[i][0](2) -= dz;	LPC_H_Real_gd[j][0](2) += dz;
 	}
 	if( type_i == "core" && type_j == "lone" )
 	{
@@ -2682,10 +2698,25 @@ void Manager::set_h_matrix_real_derivative( Cell& C, const int i, const int j, c
 		factor = 0.5 * lp->lp_charge * C.AtomList[i]->charge;
 
 		// 'H' derivative w.r.t displs (j) therefore sign '-'
-		LPC_H_Real_Derivative[j][i][0][0] -= factor * this->man_matrix4d_h_real_derivative_out[0];
-		LPC_H_Real_Derivative[j][i][0][1] -= factor * this->man_matrix4d_h_real_derivative_out[1];
-		LPC_H_Real_Derivative[j][i][0][2] -= factor * this->man_matrix4d_h_real_derivative_out[2];
-		// eigenvectors of (j) use
+		LPC_H_Real_Derivative[j][i][0][0] -= factor * this->man_matrix4d_h_real_derivative_out[0];	LPC_H_Real_Derivative[i][j][0][0] += factor * this->man_matrix4d_h_real_derivative_out[0];
+		LPC_H_Real_Derivative[j][i][0][1] -= factor * this->man_matrix4d_h_real_derivative_out[1];	LPC_H_Real_Derivative[i][j][0][1] += factor * this->man_matrix4d_h_real_derivative_out[1];
+		LPC_H_Real_Derivative[j][i][0][2] -= factor * this->man_matrix4d_h_real_derivative_out[2];	LPC_H_Real_Derivative[i][j][0][2] += factor * this->man_matrix4d_h_real_derivative_out[2];
+	
+		lp->GetEvecGS( lp_cf );
+
+		// E Derivative Evaluation ... displacements on (i)
+		for(int u=0;u<4;u++)
+		{	for(int v=0;v<4;v++)
+			{	dx += lp_cf[u]*lp_cf[v]*factor * this->man_matrix4d_h_real_derivative_out[0](u,v);
+				dy += lp_cf[u]*lp_cf[v]*factor * this->man_matrix4d_h_real_derivative_out[1](u,v);
+				dz += lp_cf[u]*lp_cf[v]*factor * this->man_matrix4d_h_real_derivative_out[2](u,v);
+			}// end u
+		}// end v
+
+		// sign must be inverted ... its for (j)
+		LPC_H_Real_gd[j][0](0) -= dx;	LPC_H_Real_gd[i][0](0) += dx;
+		LPC_H_Real_gd[j][0](1) -= dy;	LPC_H_Real_gd[i][0](1) += dy;
+		LPC_H_Real_gd[j][0](2) -= dz;	LPC_H_Real_gd[i][0](2) += dz;
 	}
 
 	if( type_i == "lone" && type_j == "shel " )
@@ -2707,11 +2738,24 @@ void Manager::set_h_matrix_real_derivative( Cell& C, const int i, const int j, c
 		Manager::support_h_matrix_real_derivative(lpi,C.sigma,Rij,this->man_matrix4d_h_real_derivative_ws,this->man_matrix4d_h_real_derivative_out);
 		factor = 0.5 * lpi->lp_charge * C.AtomList[j]->charge;
 
-		LPC_H_Real_Derivative[i][j][0][0] -= factor * this->man_matrix4d_h_real_derivative_out[0];	
-		LPC_H_Real_Derivative[i][j][0][1] -= factor * this->man_matrix4d_h_real_derivative_out[1];	
-		LPC_H_Real_Derivative[i][j][0][2] -= factor * this->man_matrix4d_h_real_derivative_out[2];	// pair geometric derivative has to be considered later
+		LPC_H_Real_Derivative[i][j][0][0] -= factor * this->man_matrix4d_h_real_derivative_out[0];	LPC_H_Real_Derivative[j][i][0][0] += factor * this->man_matrix4d_h_real_derivative_out[0];
+		LPC_H_Real_Derivative[i][j][0][1] -= factor * this->man_matrix4d_h_real_derivative_out[1];	LPC_H_Real_Derivative[j][i][0][1] += factor * this->man_matrix4d_h_real_derivative_out[1];
+		LPC_H_Real_Derivative[i][j][0][2] -= factor * this->man_matrix4d_h_real_derivative_out[2];	LPC_H_Real_Derivative[j][i][0][2] += factor * this->man_matrix4d_h_real_derivative_out[2];
 
-		// This bit problematic....
+		// E Derivative Evaluation ... displacements on (j)
+		for(int u=0;u<4;u++)
+		{	for(int v=0;v<4;v++)
+			{	dx += lpi_cf[u]*lpi_cf[v]*factor * this->man_matrix4d_h_real_derivative_out[0](u,v);
+				dy += lpi_cf[u]*lpi_cf[v]*factor * this->man_matrix4d_h_real_derivative_out[1](u,v);
+				dz += lpi_cf[u]*lpi_cf[v]*factor * this->man_matrix4d_h_real_derivative_out[2](u,v);
+			}// end u
+		}// end v
+
+		LPC_H_Real_gd[i][0](0) -= dx;	LPC_H_Real_gd[j][0](0) += dx;
+		LPC_H_Real_gd[i][0](1) -= dy;	LPC_H_Real_gd[j][0](1) += dy;
+		LPC_H_Real_gd[i][0](2) -= dz;	LPC_H_Real_gd[j][0](2) += dz;
+		
+		dx = dy = dz = 0.;// reset
 
 		/* 2-1 LP(i) CORE <----- LP(j) LP */
 		Rij = C.AtomList[i]->cart - ( C.AtomList[j]->cart + TransVector );
@@ -2719,9 +2763,24 @@ void Manager::set_h_matrix_real_derivative( Cell& C, const int i, const int j, c
 		Manager::support_h_matrix_real_derivative(lpj,C.sigma,Rij,this->man_matrix4d_h_real_derivative_ws,this->man_matrix4d_h_real_derivative_out);
 		factor = 0.5 * lpj->lp_charge * C.AtomList[i]->charge;
 
-		LPC_H_Real_Derivative[j][i][0][0] -= factor * this->man_matrix4d_h_real_derivative_out[0];	
-		LPC_H_Real_Derivative[j][i][0][1] -= factor * this->man_matrix4d_h_real_derivative_out[1];	
-		LPC_H_Real_Derivative[j][i][0][2] -= factor * this->man_matrix4d_h_real_derivative_out[2];	
+		LPC_H_Real_Derivative[j][i][0][0] -= factor * this->man_matrix4d_h_real_derivative_out[0];	LPC_H_Real_Derivative[i][j][0][0] += factor * this->man_matrix4d_h_real_derivative_out[0];
+		LPC_H_Real_Derivative[j][i][0][1] -= factor * this->man_matrix4d_h_real_derivative_out[1];	LPC_H_Real_Derivative[i][j][0][1] += factor * this->man_matrix4d_h_real_derivative_out[1];
+		LPC_H_Real_Derivative[j][i][0][2] -= factor * this->man_matrix4d_h_real_derivative_out[2];	LPC_H_Real_Derivative[i][j][0][2] += factor * this->man_matrix4d_h_real_derivative_out[2];
+
+		// E Derivative Evaluation ... displacements on (i)
+		for(int u=0;u<4;u++)
+		{	for(int v=0;v<4;v++)
+			{	dx += lpj_cf[u]*lpj_cf[v]*factor * this->man_matrix4d_h_real_derivative_out[0](u,v);
+				dy += lpj_cf[u]*lpj_cf[v]*factor * this->man_matrix4d_h_real_derivative_out[1](u,v);
+				dz += lpj_cf[u]*lpj_cf[v]*factor * this->man_matrix4d_h_real_derivative_out[2](u,v);
+			}// end u
+		}// end v
+
+		LPC_H_Real_gd[j][0](0) -= dx;	LPC_H_Real_gd[i][0](0) += dx;
+		LPC_H_Real_gd[j][0](1) -= dy;	LPC_H_Real_gd[i][0](1) += dy;
+		LPC_H_Real_gd[j][0](2) -= dz;	LPC_H_Real_gd[i][0](2) += dz;
+
+		dx = dy = dz = 0.;// reset
 
 		////	////	////	////	////	////	////	////	////	////	////	////	////	////
 
@@ -2731,9 +2790,24 @@ void Manager::set_h_matrix_real_derivative( Cell& C, const int i, const int j, c
 		Manager::support_h_matrix_real_derivative(lpi,C.sigma,Rij,this->man_matrix4d_h_real_derivative_ws,this->man_matrix4d_h_real_derivative_out);
 		factor = 0.5 * lpi->lp_charge * lpj->lp_charge;
 
-		LPLP_H_Real_Derivative[i][j][0] -= factor * this->man_matrix4d_h_real_derivative_out[0];
-		LPLP_H_Real_Derivative[i][j][1] -= factor * this->man_matrix4d_h_real_derivative_out[1];
-		LPLP_H_Real_Derivative[i][j][2] -= factor * this->man_matrix4d_h_real_derivative_out[2];
+		LPLP_H_Real_Derivative[i][j][0] -= factor * this->man_matrix4d_h_real_derivative_out[0];	LPLP_H_Real_Derivative[j][i][0] += factor * this->man_matrix4d_h_real_derivative_out[0];
+		LPLP_H_Real_Derivative[i][j][1] -= factor * this->man_matrix4d_h_real_derivative_out[1];	LPLP_H_Real_Derivative[j][i][1] += factor * this->man_matrix4d_h_real_derivative_out[1];
+		LPLP_H_Real_Derivative[i][j][2] -= factor * this->man_matrix4d_h_real_derivative_out[2];	LPLP_H_Real_Derivative[j][i][2] += factor * this->man_matrix4d_h_real_derivative_out[2];
+
+		// E Derivative Evaluation ... displacements on (j)
+		for(int u=0;u<4;u++)
+		{	for(int v=0;v<4;v++)
+			{	dx += lpi_cf[u]*lpi_cf[v]*factor * this->man_matrix4d_h_real_derivative_out[0](u,v);
+				dy += lpi_cf[u]*lpi_cf[v]*factor * this->man_matrix4d_h_real_derivative_out[1](u,v);
+				dz += lpi_cf[u]*lpi_cf[v]*factor * this->man_matrix4d_h_real_derivative_out[2](u,v);
+			}// end u
+		}// end v
+
+		LPLP_H_Real_gd[i](0) -= dx;	LPLP_H_Real_gd[j](0) += dx;
+		LPLP_H_Real_gd[i](1) -= dy;	LPLP_H_Real_gd[j](1) += dy;
+		LPLP_H_Real_gd[i](2) -= dz;	LPLP_H_Real_gd[j](2) += dz;
+		
+		dx = dy = dz = 0.;// reset
 
 		/* 3-2 LP(i) <----- LP(j) LP ... Monopole */
 		Rij = C.AtomList[i]->cart - ( C.AtomList[j]->cart + TransVector );
@@ -2741,9 +2815,24 @@ void Manager::set_h_matrix_real_derivative( Cell& C, const int i, const int j, c
 		Manager::support_h_matrix_real_derivative(lpj,C.sigma,Rij,this->man_matrix4d_h_real_derivative_ws,this->man_matrix4d_h_real_derivative_out);
 		factor = 0.5 * lpi->lp_charge * lpj->lp_charge;
 
-		LPLP_H_Real_Derivative[j][i][0] -= factor * this->man_matrix4d_h_real_derivative_out[0];
-		LPLP_H_Real_Derivative[j][i][1] -= factor * this->man_matrix4d_h_real_derivative_out[1];
-		LPLP_H_Real_Derivative[j][i][2] -= factor * this->man_matrix4d_h_real_derivative_out[2];
+		LPLP_H_Real_Derivative[j][i][0] -= factor * this->man_matrix4d_h_real_derivative_out[0];	LPLP_H_Real_Derivative[i][j][0] += factor * this->man_matrix4d_h_real_derivative_out[0];
+		LPLP_H_Real_Derivative[j][i][1] -= factor * this->man_matrix4d_h_real_derivative_out[1];	LPLP_H_Real_Derivative[i][j][1] += factor * this->man_matrix4d_h_real_derivative_out[1];
+		LPLP_H_Real_Derivative[j][i][2] -= factor * this->man_matrix4d_h_real_derivative_out[2];	LPLP_H_Real_Derivative[i][j][2] += factor * this->man_matrix4d_h_real_derivative_out[2];
+
+		// E Derivative Evaluation ... displacements on (i)
+		for(int u=0;u<4;u++)
+		{	for(int v=0;v<4;v++)
+			{	dx += lpj_cf[u]*lpj_cf[v]*factor * this->man_matrix4d_h_real_derivative_out[0](u,v);
+				dy += lpj_cf[u]*lpj_cf[v]*factor * this->man_matrix4d_h_real_derivative_out[1](u,v);
+				dz += lpj_cf[u]*lpj_cf[v]*factor * this->man_matrix4d_h_real_derivative_out[2](u,v);
+			}// end u
+		}// end v
+
+		LPLP_H_Real_gd[j](0) -= dx;	LPLP_H_Real_gd[i](0) += dx;
+		LPLP_H_Real_gd[j](1) -= dy;	LPLP_H_Real_gd[i](1) += dy;
+		LPLP_H_Real_gd[j](2) -= dz;	LPLP_H_Real_gd[i](2) += dz;
+
+		dx = dy = dz = 0.;// reset
 
 		/* 4 LP(i) ------> LP(j) Dipole */
 		Rij = ( C.AtomList[j]->cart + TransVector ) - C.AtomList[i]->cart;
@@ -2764,8 +2853,41 @@ void Manager::set_h_matrix_real_derivative( Cell& C, const int i, const int j, c
 											      + man_matrix4d_h_real_derivative2_out[4]*(2.*lpj_cf[0]*lpj_cf[2])		// 4 zy (yz)
 											      + man_matrix4d_h_real_derivative2_out[5]*(2.*lpj_cf[0]*lpj_cf[3]) ));	// 5 zz 
 
+		// For (j)
+		LPLP_H_Real_Derivative[j][i][0] += ((factor*lpj->lp_real_position_integral) * ( man_matrix4d_h_real_derivative2_out[0]*(2.*lpj_cf[0]*lpj_cf[1]) 	// 0 xx
+											      + man_matrix4d_h_real_derivative2_out[1]*(2.*lpj_cf[0]*lpj_cf[2])		// 1 xy
+											      + man_matrix4d_h_real_derivative2_out[2]*(2.*lpj_cf[0]*lpj_cf[3]) ));	// 2 xz
+	
+		LPLP_H_Real_Derivative[j][i][1] += ((factor*lpj->lp_real_position_integral) * ( man_matrix4d_h_real_derivative2_out[1]*(2.*lpj_cf[0]*lpj_cf[1])		// 1 yx (xy) 
+											      + man_matrix4d_h_real_derivative2_out[3]*(2.*lpj_cf[0]*lpj_cf[2])		// 3 yy
+											      + man_matrix4d_h_real_derivative2_out[4]*(2.*lpj_cf[0]*lpj_cf[3]) ));	// 4 yz
+
+		LPLP_H_Real_Derivative[j][i][2] += ((factor*lpj->lp_real_position_integral) * ( man_matrix4d_h_real_derivative2_out[2]*(2.*lpj_cf[0]*lpj_cf[1]) 	// 2 zx (xz)
+											      + man_matrix4d_h_real_derivative2_out[4]*(2.*lpj_cf[0]*lpj_cf[2])		// 4 zy (yz)
+											      + man_matrix4d_h_real_derivative2_out[5]*(2.*lpj_cf[0]*lpj_cf[3]) ));	// 5 zz 
+
+		for(int u=0;u<4;u++)
+		{	for(int v=0;v<4;v++)
+			{	dx += ( lpi_cf[u]*lpi_cf[v] * factor * 2. * lpj->lp_real_position_integral * ( lpj_cf[0] * lpj_cf[1] * man_matrix4d_h_real_derivative2_out[0](u,v)	// xx 0 
+													     + lpj_cf[0] * lpj_cf[2] * man_matrix4d_h_real_derivative2_out[1](u,v)	// xy 1
+													     + lpj_cf[0] * lpj_cf[3] * man_matrix4d_h_real_derivative2_out[2](u,v) ));	// xz 2
+				dy += ( lpi_cf[u]*lpi_cf[v] * factor * 2. * lpj->lp_real_position_integral * ( lpj_cf[0] * lpj_cf[1] * man_matrix4d_h_real_derivative2_out[1](u,v)	// yx 1 
+													     + lpj_cf[0] * lpj_cf[2] * man_matrix4d_h_real_derivative2_out[3](u,v)	// yy 3
+													     + lpj_cf[0] * lpj_cf[3] * man_matrix4d_h_real_derivative2_out[4](u,v) ));	// yz 4
+				dz += ( lpi_cf[u]*lpi_cf[v] * factor * 2. * lpj->lp_real_position_integral * ( lpj_cf[0] * lpj_cf[1] * man_matrix4d_h_real_derivative2_out[2](u,v) 	// zx 2
+													     + lpj_cf[0] * lpj_cf[2] * man_matrix4d_h_real_derivative2_out[4](u,v)	// zy 4
+													     + lpj_cf[0] * lpj_cf[3] * man_matrix4d_h_real_derivative2_out[5](u,v) ));	// zz 5
+			}// end u
+		}// end v
+
+		LPLP_H_Real_gd[i](0) -= dx;	LPLP_H_Real_gd[j](0) += dx;
+		LPLP_H_Real_gd[i](1) -= dy;	LPLP_H_Real_gd[j](1) += dy;
+		LPLP_H_Real_gd[i](2) -= dz;	LPLP_H_Real_gd[j](2) += dz;
+
+		dx = dy = dz = 0.;// reset
+
 		// * Correction by Evec Derivatives ... Eigen::Vector4d LP_Evec_Derivative[MX_C][MX_C][2];
-		// will be considered in other function ... 
+		// ????
 	}
 	return;
 }
@@ -2883,135 +3005,16 @@ void Manager::CoulombLonePairDerivativeReal( Cell& C, const int i, const int j, 
 void Manager::CoulombLonePairDerivativeSelf( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector )
 {
 	double Qi,Qj;
-	double factor, self;
+	double r_norm,r_sqr;
+	Eigen::Vector3d Rij;
+	
+	double intact;
 
 	if( C.AtomList[i]->type == "lone" && C.AtomList[j]->type == "lone" ) 
         {
-		// 1. Core-Core self -> 0
-		// 2. LP-LP self -> 0
 
-		// * LP-Core self != 0
-		LonePair* lpi = static_cast<LonePair*>(C.AtomList[i]);
-		Qi = lpi->lp_charge;
-		Qj = C.AtomList[i]->charge;
-		factor = -(0.5*Qi*Qj)*2.;
-				
-		//Eigen::Matrix4d LPLP_H_Self_Derivative[MX_C][3];
-		//lp_self_grad = this->man_lp_matrix_h.reci_self_integral_sx_grad_x(lp->lp_r,lp->lp_r_s_function,lp->lp_r_p_function,sig);
-		self = factor * this->man_lp_matrix_h.reci_self_integral_sx_grad_x(lpi->lp_r,lpi->lp_r_s_function,lpi->lp_r_p_function,C.sigma);	// unit readily ... eV/Angs .. '-' sign readily on factor
-		this->LP_H_Self_Derivative[i][0](0,1) = this->LP_H_Self_Derivative[i][0](1,0) = self;	// (0,1) sx, (1,0) xs
-		this->LP_H_Self_Derivative[i][1](0,2) = this->LP_H_Self_Derivative[i][1](2,0) = self;	// (0,2) sy, (2,0) ys
-		this->LP_H_Self_Derivative[i][2](0,3) = this->LP_H_Self_Derivative[i][2](3,0) = self;	// (0,3) sz, (3,0) zs	// Unit already set to eV/Angs
 	}
 }       
-
-void Manager::set_h_matrix_reci_derivative( Cell& C, const int i, const int j, const Eigen::Vector3d& G, const bool is_first_iter )
-{
-	const std::string type_i = C.AtomList[i]->type;
-	const std::string type_j = C.AtomList[j]->type;
-	double lpi_cf[4], lpj_cf[4];
-
-	double factor, intact[4];	// factor : halved leading term / intact : Cos(G.Rij), Sin(G.Rij), rests->for LPLP
-	double Qi,Qj;
-	const double g_sqr = G.adjoint()*G;
-	Eigen::Vector3d Rij;	// Saving Real Space Rij
-        // TransVector(G) = 2pi h*u + 2pi k*v + 2pi l*w;
-
-	// Eigen::Matrix4d LPC_H_Reci_Derivative[MX_C][MX_C][2][3];
-	if( type_i == "lone" && type_j == "core" )
-	{
-		LonePair* lpi = static_cast<LonePair*>(C.AtomList[i]);
-		//lpi->GetEvecGS( lpi_cf );
-
-		Qi  = lpi->lp_charge;
-		Qj  = C.AtomList[j]->charge;
-		Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;	// Ri(LP-Core) -----> Rj(MM-Core) ... i.e.,( Rj - Ri )
-	
-		factor = C.TO_EV * (2.*M_PI/C.volume)*(Qi*Qj)*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr;
-		intact[0] = cos(Rij.adjoint()*G); // cos{(Rj-Ri).G}
-		intact[1] = sin(Rij.adjoint()*G); // sin{(Rj-Ri).G}
-
-		Manager::support_h_matrix_reci(lpi,G,this->man_matrix4d_h_reci_ws,this->man_matrix4d_h_reci_out); // man_matrix4d_h_reci_ws/out [0..1] : 0 cosine / 1 sine ... return unit dimensionless
-
-		// grad taken for (j)
-		LPC_H_Reci_Derivative[i][j][0][0] -= (factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(0) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(0) ));
-		LPC_H_Reci_Derivative[i][j][0][1] -= (factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(1) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(1) ));
-		LPC_H_Reci_Derivative[i][j][0][2] -= (factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(2) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(2) ));
-	}
-
-	if( type_i == "core" && type_j == "lone" )
-	{
-		LonePair* lpj = static_cast<LonePair*>(C.AtomList[j]);
-		
-		Qi  = C.AtomList[i]->charge;
-		Qj  = lpj->lp_charge;
-		Rij = C.AtomList[i]->cart - C.AtomList[j]->cart;	// Rj(LP-Core) -----> Ri(MM-Core) ... i.e., ( Ri - Rj )
-
-		factor = C.TO_EV * (2.*M_PI/C.volume)*(Qi*Qj)*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr;
-		intact[0] = cos(Rij.adjoint()*G); // cos{(Ri-Rj).G}
-		intact[1] = sin(Rij.adjoint()*G); // sin{(Ri-Rj).G}
-
-		Manager::support_h_matrix_reci(lpj,G,this->man_matrix4d_h_reci_ws,this->man_matrix4d_h_reci_out); // man_matrix4d_h_reci_ws/out [0..1] : 0 cosine / 1 sine ... return unit dimensionless
-
-		// grad taken for (i)
-		LPC_H_Reci_Derivative[j][i][0][0] -= (factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(0) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(0) ));
-		LPC_H_Reci_Derivative[j][i][0][1] -= (factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(1) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(1) ));
-		LPC_H_Reci_Derivative[j][i][0][2] -= (factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(2) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(2) ));
-	}
-
-	if( type_i == "lone" && type_j == "shel" )
-	{	// NotImplemented
-	}
-
-	if( type_i == "shel" && type_j == "lone" )
-	{	//NotImplemented
-	}
-
-	if( type_i == "lone" && type_j == "lone" )
-	{
-		LonePair* lpi = static_cast<LonePair*>(C.AtomList[i]);
-		LonePair* lpj = static_cast<LonePair*>(C.AtomList[j]);
-
-		// LPi (LP) -----> LPj (Core)
-		Qi  = lpi->lp_charge;
-		Qj  = C.AtomList[j]->charge;
-		Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;
-
-		factor = C.TO_EV * (2.*M_PI/C.volume)*(Qi*Qj)*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr;
-		intact[0] = cos(Rij.adjoint()*G); // cos{(Rj-Ri).G}
-		intact[1] = sin(Rij.adjoint()*G); // sin{(Rj-Ri).G}
-
-		Manager::support_h_matrix_reci(lpi,G,this->man_matrix4d_h_reci_ws,this->man_matrix4d_h_reci_out); // man_matrix4d_h_reci_ws/out [0..1] : 0 cosine / 1 sine ... return unit dimensionless
-
-		// grad taken for (j)
-		LPC_H_Reci_Derivative[i][j][0][0] -= (factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(0) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(0) ));
-		LPC_H_Reci_Derivative[i][j][0][1] -= (factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(1) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(1) ));
-		LPC_H_Reci_Derivative[i][j][0][2] -= (factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(2) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(2) ));
-
-		// LPi (Core) <----- LPj (LP)
-		Qi  = C.AtomList[i]->charge;
-		Qj  = lpj->lp_charge;
-		Rij = C.AtomList[i]->cart - C.AtomList[j]->cart;
-
-		factor = C.TO_EV * (2.*M_PI/C.volume)*(Qi*Qj)*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr;
-		intact[0] = cos(Rij.adjoint()*G); // cos{(Ri-Rj).G}
-		intact[1] = sin(Rij.adjoint()*G); // sin{(Ri-Rj).G}
-
-		Manager::support_h_matrix_reci(lpj,G,this->man_matrix4d_h_reci_ws,this->man_matrix4d_h_reci_out); // man_matrix4d_h_reci_ws/out [0..1] : 0 cosine / 1 sine ... return unit dimensionless
-
-		// grad taken for (i) 
-		LPC_H_Reci_Derivative[j][i][0][0] -= (factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(0) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(0) ));
-		LPC_H_Reci_Derivative[j][i][0][1] -= (factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(1) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(1) ));
-		LPC_H_Reci_Derivative[j][i][0][2] -= (factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(2) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(2) ));
-
-		// LPi -----> LPj	// Ref? lpj->GetEvecGS( lpj_cf );
-
-
-
-	}
-
-	return;
-}
 
 void Manager::CoulombLonePairDerivativeReci( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector )
 {
