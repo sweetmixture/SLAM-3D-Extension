@@ -1638,9 +1638,13 @@ void Manager::InitialiseLonePairCalculation_Energy( Cell& C , const bool is_firs
 			LPLP_H_Real[j][k].setZero();	// Interaction of LP<--->LP Real
 			LPLP_H_Reci[j][k].setZero();	// Interaction of LP<--->LP Reciprocal
 	
-			// For Geometric Derivative Calculation Later...
+			// For Geometric Derivative Calculation Later - Real
 			LPLP_H_Real_Aux[j][k][0].setZero(); LPLP_H_Real_Aux[j][k][1].setZero(); LPLP_H_Real_Aux[j][k][2].setZero();
-			//LPLP_H_Reci_Dipole[j][k][0].setZero(); LPLP_H_Reci_Dipole[j][k][1].setZero(); LPLP_H_Reci_Dipole[j][k][2].setZero();
+			// For Geometric Derivative Calculation Later - Reciporcal
+			LPLP_H_Reci_Aux[j][k][0].setZero(); LPLP_H_Reci_Aux[j][k][1].setZero();	LPLP_H_Reci_Aux[j][k][2].setZero();
+			LPLP_H_Reci_Aux[j][k][3].setZero(); LPLP_H_Reci_Aux[j][k][4].setZero();	LPLP_H_Reci_Aux[j][k][5].setZero();
+			LPLP_H_Reci_Aux[j][k][6].setZero(); LPLP_H_Reci_Aux[j][k][7].setZero();	LPLP_H_Reci_Aux[j][k][8].setZero();
+			LPLP_H_Reci_Aux[j][k][9].setZero();
 		}
 	}
 
@@ -2132,9 +2136,15 @@ void Manager::set_h_matrix_real( Cell& C, const int i, const int j, const Eigen:
 		//MAKE SURE THE SIGN IS CORRECT!!!
 
 		// * Save Dipolar Terms ... For Geometric Derivative Calculation Later...
-		this->LPLP_H_Real_Aux[i][j][0] += factor * this->man_matrix4d_h_real_derivative_out[0];
-		this->LPLP_H_Real_Aux[i][j][1] += factor * this->man_matrix4d_h_real_derivative_out[1];
-		this->LPLP_H_Real_Aux[i][j][2] += factor * this->man_matrix4d_h_real_derivative_out[2];
+		this->LPLP_H_Real_Aux[i][j][0] += factor * lpj->lp_real_position_integral * this->man_matrix4d_h_real_derivative_out[0];	// factor is just charges * 0.5 ... 1/2 * qi * qj
+		this->LPLP_H_Real_Aux[i][j][1] += factor * lpj->lp_real_position_integral * this->man_matrix4d_h_real_derivative_out[1];
+		this->LPLP_H_Real_Aux[i][j][2] += factor * lpj->lp_real_position_integral * this->man_matrix4d_h_real_derivative_out[2];	// must keep the form before 'b' molecular orbtial coefficients applied
+
+		/* 
+			SUM(l,s) Cbl*Cbs*<ua| dxH <lb|rbx|sb> + dyH <lb|rby|sb> + dzH <lb|rbz|sb> |va> 
+			=  <ua|dxH|va>*f*p * (2*Cbs*Cbx) + <ua|dyH|va>*f*p * (2*Cbs*Cby) + <ua|dzH|va>*f*p * (2*Cbs*Cbz)
+			     Save                               Save                             Save
+		*/
 
 #ifdef LPLP_CHECK
 std::cout << "LPLP+CHECK" << std::endl;
@@ -2517,6 +2527,7 @@ void Manager::set_h_matrix_reci( Cell& C, const int i, const int j, const Eigen:
 		intact[0] = cos(Rij.adjoint()*G);
 		intact[1] = sin(Rij.adjoint()*G);
 
+/*
 		// Evaluation
 		//Manager::support_h_matrix_reci( lpj, G, this->man_matrix4d_h_reci_ws, this->man_matrix4d_h_reci_out );	// man_matrix4d_h_reci_ws/out[0-1] : 0 cosine 1 sine
 		intact[2] = intact[3] = 0.;
@@ -2534,9 +2545,54 @@ void Manager::set_h_matrix_reci( Cell& C, const int i, const int j, const Eigen:
 									   + intact[1] * (this->man_matrix4d_h_reci_out[0](ii,jj)*intact[3] - this->man_matrix4d_h_reci_out[1](ii,jj)*intact[2]) );		
 			}
 		}
+*/
+		// Equivalent expression with above
+		for(int u=0;u<4;u++)
+		{	for(int v=0;v<4;v++)
+			{	for(int l=0;l<4;l++)
+				{	for(int s=0;s<4;s++)
+					{ this->LPLP_H_Reci[i][j](u,v) += factor *(lp_cf[s]*lp_cf[l]*(this->man_matrix4d_h_reci_out[0](l,s)*(intact[0]*this->man_matrix4d_h_reci_out[0](u,v)-intact[1]*this->man_matrix4d_h_reci_out[1](u,v))
+											             +this->man_matrix4d_h_reci_out[1](l,s)*(intact[0]*this->man_matrix4d_h_reci_out[1](u,v)+intact[1]*this->man_matrix4d_h_reci_out[0](u,v))));
+					}// s
+				}// l
+			}// v
+		}// u
 
-		
+		for(int u=0;u<4;u++)
+		{	for(int v=0;v<4;v++)
+			{	// SS
+				this->LPLP_H_Reci_Aux[i][j][0](u,v) += factor * (this->man_matrix4d_h_reci_out[0](0,0)*(intact[0]*this->man_matrix4d_h_reci_out[0](u,v)-intact[1]*this->man_matrix4d_h_reci_out[1](u,v))
+										+this->man_matrix4d_h_reci_out[1](0,0)*(intact[0]*this->man_matrix4d_h_reci_out[1](u,v)+intact[1]*this->man_matrix4d_h_reci_out[0](u,v)));
+				// SX * 2
+				this->LPLP_H_Reci_Aux[i][j][1](u,v) += factor * (this->man_matrix4d_h_reci_out[0](0,1)*(intact[0]*this->man_matrix4d_h_reci_out[0](u,v)-intact[1]*this->man_matrix4d_h_reci_out[1](u,v))
+										+this->man_matrix4d_h_reci_out[1](0,1)*(intact[0]*this->man_matrix4d_h_reci_out[1](u,v)+intact[1]*this->man_matrix4d_h_reci_out[0](u,v)));
+				// SY * 2
+				this->LPLP_H_Reci_Aux[i][j][2](u,v) += factor * (this->man_matrix4d_h_reci_out[0](0,2)*(intact[0]*this->man_matrix4d_h_reci_out[0](u,v)-intact[1]*this->man_matrix4d_h_reci_out[1](u,v))
+										+this->man_matrix4d_h_reci_out[1](0,2)*(intact[0]*this->man_matrix4d_h_reci_out[1](u,v)+intact[1]*this->man_matrix4d_h_reci_out[0](u,v)));
+				// SZ * 2
+				this->LPLP_H_Reci_Aux[i][j][3](u,v) += factor * (this->man_matrix4d_h_reci_out[0](0,3)*(intact[0]*this->man_matrix4d_h_reci_out[0](u,v)-intact[1]*this->man_matrix4d_h_reci_out[1](u,v))
+										+this->man_matrix4d_h_reci_out[1](0,3)*(intact[0]*this->man_matrix4d_h_reci_out[1](u,v)+intact[1]*this->man_matrix4d_h_reci_out[0](u,v)));
+				// XX
+				this->LPLP_H_Reci_Aux[i][j][4](u,v) += factor * (this->man_matrix4d_h_reci_out[0](1,1)*(intact[0]*this->man_matrix4d_h_reci_out[0](u,v)-intact[1]*this->man_matrix4d_h_reci_out[1](u,v))
+										+this->man_matrix4d_h_reci_out[1](1,1)*(intact[0]*this->man_matrix4d_h_reci_out[1](u,v)+intact[1]*this->man_matrix4d_h_reci_out[0](u,v)));
+				// XY * 2
+				this->LPLP_H_Reci_Aux[i][j][5](u,v) += factor * (this->man_matrix4d_h_reci_out[0](1,2)*(intact[0]*this->man_matrix4d_h_reci_out[0](u,v)-intact[1]*this->man_matrix4d_h_reci_out[1](u,v))
+										+this->man_matrix4d_h_reci_out[1](1,2)*(intact[0]*this->man_matrix4d_h_reci_out[1](u,v)+intact[1]*this->man_matrix4d_h_reci_out[0](u,v)));
+				// XZ * 2
+				this->LPLP_H_Reci_Aux[i][j][6](u,v) += factor * (this->man_matrix4d_h_reci_out[0](1,3)*(intact[0]*this->man_matrix4d_h_reci_out[0](u,v)-intact[1]*this->man_matrix4d_h_reci_out[1](u,v))
+										+this->man_matrix4d_h_reci_out[1](1,3)*(intact[0]*this->man_matrix4d_h_reci_out[1](u,v)+intact[1]*this->man_matrix4d_h_reci_out[0](u,v)));
+				// YY
+				this->LPLP_H_Reci_Aux[i][j][7](u,v) += factor * (this->man_matrix4d_h_reci_out[0](2,2)*(intact[0]*this->man_matrix4d_h_reci_out[0](u,v)-intact[1]*this->man_matrix4d_h_reci_out[1](u,v))
+										+this->man_matrix4d_h_reci_out[1](2,2)*(intact[0]*this->man_matrix4d_h_reci_out[1](u,v)+intact[1]*this->man_matrix4d_h_reci_out[0](u,v)));
+				// YZ * 2
+				this->LPLP_H_Reci_Aux[i][j][8](u,v) += factor * (this->man_matrix4d_h_reci_out[0](2,3)*(intact[0]*this->man_matrix4d_h_reci_out[0](u,v)-intact[1]*this->man_matrix4d_h_reci_out[1](u,v))
+										+this->man_matrix4d_h_reci_out[1](2,3)*(intact[0]*this->man_matrix4d_h_reci_out[1](u,v)+intact[1]*this->man_matrix4d_h_reci_out[0](u,v)));
+				// ZZ * 2
+				this->LPLP_H_Reci_Aux[i][j][9](u,v) += factor * (this->man_matrix4d_h_reci_out[0](3,3)*(intact[0]*this->man_matrix4d_h_reci_out[0](u,v)-intact[1]*this->man_matrix4d_h_reci_out[1](u,v))
+										+this->man_matrix4d_h_reci_out[1](3,3)*(intact[0]*this->man_matrix4d_h_reci_out[1](u,v)+intact[1]*this->man_matrix4d_h_reci_out[0](u,v)));
 
+			}
+		}
 	}
 	return;
 }

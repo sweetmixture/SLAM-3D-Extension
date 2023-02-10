@@ -79,8 +79,8 @@ Eigen::Matrix4d LPLP_H_Reci[MX_C][MX_C];
 
 //scf_dh_x_matrix_vs_sp_ion_dipole
 // Saving Dipole - Dipole interaction term for later Geometric Derivative Calculations
-Eigen::Matrix4d LPLP_H_Real_Aux[MX_C][MX_C][3];	// [0..2] : [0] x, [1] y, [2] z; - Important for calculating eigenvector derivatives
-Eigen::Matrix4d LPLP_H_Reci_Aux[MX_C][MX_C];
+Eigen::Matrix4d LPLP_H_Real_Aux[MX_C][MX_C][3];	// [0..2] : [0] x, [1] y, [2] z; - Important for calculating eigenvector derivatives - There are three unique terms to be kept
+Eigen::Matrix4d LPLP_H_Reci_Aux[MX_C][MX_C][10]; // There are four unique terms to be kept .. ss, sx, sy, sz, xx, xy, xz, yy, yz, zz
 
 // Saving EigenVector (Coefficient) Derivatives
 Eigen::Vector4d LP_Evec_Derivative[MX_C][MX_C][2];
