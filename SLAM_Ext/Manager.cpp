@@ -2856,16 +2856,6 @@ void Manager::set_h_matrix_real_derivative( Cell& C, const int i, const int j, c
 		LPLP_H_Real_Derivative[i][j][1] -= factor * this->man_matrix4d_h_real_derivative_out[1];
 		LPLP_H_Real_Derivative[i][j][2] -= factor * this->man_matrix4d_h_real_derivative_out[2];
 
-		/* 3-2 LP(i) <----- LP(j) LP ... Monopole */
-		Rij = C.AtomList[i]->cart - ( C.AtomList[j]->cart + TransVector );
-		// Derivative Evaluation ... displacement on (i)
-		Manager::support_h_matrix_real_derivative(lpj,C.sigma,Rij,this->man_matrix4d_h_real_derivative_ws,this->man_matrix4d_h_real_derivative_out);
-		factor = 0.5 * lpi->lp_charge * lpj->lp_charge;
-
-		LPLP_H_Real_Derivative[j][i][0] -= factor * this->man_matrix4d_h_real_derivative_out[0];
-		LPLP_H_Real_Derivative[j][i][1] -= factor * this->man_matrix4d_h_real_derivative_out[1];
-		LPLP_H_Real_Derivative[j][i][2] -= factor * this->man_matrix4d_h_real_derivative_out[2];
-
 		/* 4 LP(i) ------> LP(j) Dipole */
 		Rij = ( C.AtomList[j]->cart + TransVector ) - C.AtomList[i]->cart;
 		// Derivative Evaluation ... displacement on (j)
@@ -3383,7 +3373,7 @@ void Manager::grad_evec_cart_solver( Cell& C )
 										dh_matrix_tmp[0] += this->LPLP_H_Real_Derivative[i][k][0];
 										dh_matrix_tmp[1] += this->LPLP_H_Real_Derivative[i][k][1];
 										dh_matrix_tmp[2] += this->LPLP_H_Real_Derivative[i][k][2];
-										// versus LP (k) monopole and dipole reci
+										// versus LP (k)
 										dh_matrix_tmp[0] += this->LPLP_H_Reci_Derivative[i][k][0];
 										dh_matrix_tmp[1] += this->LPLP_H_Reci_Derivative[i][k][1];
 										dh_matrix_tmp[2] += this->LPLP_H_Reci_Derivative[i][k][2];
@@ -3480,7 +3470,7 @@ void Manager::grad_evec_cart_solver( Cell& C )
 											dh_matrix_tmp[0] += -this->LPLP_H_Real_Derivative[j][i][0];			
 											dh_matrix_tmp[1] += -this->LPLP_H_Real_Derivative[j][i][1];			
 											dh_matrix_tmp[2] += -this->LPLP_H_Real_Derivative[j][i][2];			
-											// versus LP (i) monopole and dipole reci - sign inverted
+											// versus LP (i) - sign inverted
 											dh_matrix_tmp[0] += -this->LPLP_H_Reci_Derivative[j][i][0];			
 											dh_matrix_tmp[1] += -this->LPLP_H_Reci_Derivative[j][i][1];			
 											dh_matrix_tmp[2] += -this->LPLP_H_Reci_Derivative[j][i][2];			
