@@ -1075,7 +1075,7 @@ void Manager::CoulombDerivativeSelf( Cell& C, const int i, const int j, const Ei
 	}
 }       
 
-void Manager::CoulombDerivativeReci( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector )
+void Manager::CoulombDerivativeReci( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector /* G */)
 {
 	double Qi,Qj;
 	double g_norm = TransVector.norm();
@@ -2141,9 +2141,14 @@ void Manager::set_h_matrix_real( Cell& C, const int i, const int j, const Eigen:
 		this->LPLP_H_Real_Aux[i][j][2] += factor * lpj->lp_real_position_integral * this->man_matrix4d_h_real_derivative_out[2];	// must keep the form before 'b' molecular orbtial coefficients applied
 
 		/* 
-			SUM(l,s) Cbl*Cbs*<ua| dxH <lb|rbx|sb> + dyH <lb|rby|sb> + dzH <lb|rbz|sb> |va> 
-			=  <ua|dxH|va>*f*p * (2*Cbs*Cbx) + <ua|dyH|va>*f*p * (2*Cbs*Cby) + <ua|dzH|va>*f*p * (2*Cbs*Cbz)
-			     Save                               Save                             Save
+			SUM(l,s) Cbl*Cbs*<ua| dxHab <lb|rbx|sb> + dyHab <lb|rby|sb> + dzHab <lb|rbz|sb> |va> 
+			=  <ua|dxHab|va>*f*p * (2*Cbs*Cbx) + <ua|dyHab|va>*f*p * (2*Cbs*Cby) + <ua|dzHab|va>*f*p * (2*Cbs*Cbz)
+
+			Save 1 - <ua|dxHab|va> * f * p
+			Save 2 - <ua|dyHab|va> * f * p
+			Save 3 - <ua|dzHab|va> * f * p
+
+			The savings will be used for calculating evec derivatives.. w.r.t. x (atom coordinates), G (reciprocal lattice vectors), V (Cell volume)
 		*/
 
 #ifdef LPLP_CHECK
@@ -2558,6 +2563,26 @@ void Manager::set_h_matrix_reci( Cell& C, const int i, const int j, const Eigen:
 			}// v
 		}// u
 
+
+		/*
+ 			H_LPLP_Reci[a][b](u,v) += f * cb_l * cb_s * ( CosInt_b(l,s) * ( cos(G.Rab) * CosInt_a(u,v) - sin(G.Rab) * SinInt_a(u,v) )
+								     +SinInt_b(l,s) * ( cis(G.Rab) * SinInt_a(u,v) + sin(G.Rab) * CosInt_a(u,v) ) );
+
+			indices .. l and s not looped through, i.e., they are fixed
+			
+			Save - 1  : (l,s) = (s,s)
+			Save - 2  : (l,s) = (s,x)
+			Save - 3  : (l,s) = (s,y)
+			Save - 4  : (l,s) = (s,z)
+			Save - 5  : (l,s) = (x,x)
+			Save - 6  : (l,s) = (x,y)
+			Save - 7  : (l,s) = (x,z)
+			Save - 8  : (l,s) = (y,y)
+			Save - 9  : (l,s) = (y,z)
+			Save - 10 : (l,s) = (z,z)
+
+			The savings will be used for calculating evec derivatives.. w.r.t. x (atom coordinates), G (reciprocal lattice vectors), V (Cell volume)
+		*/
 		for(int u=0;u<4;u++)
 		{	for(int v=0;v<4;v++)
 			{	// SS
@@ -2685,6 +2710,36 @@ void Manager::CoulombLonePairReci( Cell& C, const int i, const int j, const Eige
 	Manager::set_h_matrix_reci( C, i, j, TransVector, is_first_scf );
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ////	////	////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////
 
 ////	LonePair_Derivative
@@ -2695,10 +2750,20 @@ void Manager::InitialiseLonePairCalculation_Derivatives( Cell& C )
 {
 	for(int i=0;i<C.NumberOfAtoms;i++)
 	{
-		if( C.AtomList[i]->type == "lone" )
-		{
-
+		for(int j=0;j<C.NumberOfAtoms;j++)
+		{	// Real LP-MM,LPcore
+			LPC_H_Real_Derivative[i][j][0][0].setZero(); LPC_H_Real_Derivative[i][j][0][1].setZero(); LPC_H_Real_Derivative[i][j][0][2].setZero();
+			LPC_H_Real_Derivative[i][j][1][0].setZero(); LPC_H_Real_Derivative[i][j][1][1].setZero(); LPC_H_Real_Derivative[i][j][1][2].setZero();
+			// Real LP-LP
+			LPLP_H_Real_Derivative[i][j][0].setZero(); LPLP_H_Real_Derivative[i][j][1].setZero(); LPLP_H_Real_Derivative[i][j][2].setZero();
+			// Reci LP-MM,LPcore
+			LPC_H_Reci_Derivative[i][j][0][0].setZero(); LPC_H_Reci_Derivative[i][j][0][1].setZero(); LPC_H_Reci_Derivative[i][j][0][2].setZero();
+			LPC_H_Reci_Derivative[i][j][1][0].setZero(); LPC_H_Reci_Derivative[i][j][1][1].setZero(); LPC_H_Reci_Derivative[i][j][2][2].setZero();
+			// Reci LP-LP
+			LPLP_H_Reci_Derivative[i][j][0].setZero(); LPLP_H_Reci_Derivative[i][j][1].setZero(); LPLP_H_Reci_Derivative[i][j][2].setZero();
 		}
+		// Self
+		LP_H_Self_Derivative[i][0].setZero(); LP_H_Self_Derivative[i][1].setZero(); LP_H_Self_Derivative[i][2].setZero();
 	}
 	return;
 }
@@ -2706,7 +2771,7 @@ void Manager::InitialiseLonePairCalculation_Derivatives( Cell& C )
 /*
  * Sign Guide Line : any derivatives are calculated w.r.t. (j) of (i) ----> (j) ... i.e., (i) is assumed to be placed at the local centre or the local origin
  */
-void Manager::set_h_matrix_real_derivative( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector, const bool is_first_iter )
+void Manager::set_h_matrix_real_derivative( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector )
 {
 	const std::string type_i = C.AtomList[i]->type;
 	const std::string type_j = C.AtomList[j]->type;
@@ -2933,6 +2998,7 @@ void Manager::CoulombLonePairDerivativeReal( Cell& C, const int i, const int j, 
 		C.AtomList[i]->cart_gd += intact*Rij;
 		C.AtomList[j]->cart_gd -= intact*Rij;
         }       
+	Manager::set_h_matrix_real_derivative( C, i, j, TransVector );
 
 }
 
@@ -2961,7 +3027,7 @@ void Manager::CoulombLonePairDerivativeSelf( Cell& C, const int i, const int j, 
 	}
 }       
 
-void Manager::set_h_matrix_reci_derivative( Cell& C, const int i, const int j, const Eigen::Vector3d& G, const bool is_first_iter )
+void Manager::set_h_matrix_reci_derivative( Cell& C, const int i, const int j, const Eigen::Vector3d& G )
 {
 	const std::string type_i = C.AtomList[i]->type;
 	const std::string type_j = C.AtomList[j]->type;
@@ -2977,7 +3043,6 @@ void Manager::set_h_matrix_reci_derivative( Cell& C, const int i, const int j, c
 	if( type_i == "lone" && type_j == "core" )
 	{
 		LonePair* lpi = static_cast<LonePair*>(C.AtomList[i]);
-		//lpi->GetEvecGS( lpi_cf );
 
 		Qi  = lpi->lp_charge;
 		Qj  = C.AtomList[j]->charge;
@@ -3061,15 +3126,62 @@ void Manager::set_h_matrix_reci_derivative( Cell& C, const int i, const int j, c
 		LPC_H_Reci_Derivative[j][i][0][2] -= (factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(2) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(2) ));
 
 		// LPi -----> LPj	// Ref? lpj->GetEvecGS( lpj_cf );
+		Qi  = lpi->lp_charge;
+		Qj  = lpj->lp_charge;
+		Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;
 
+		lpj->GetEvecGS( lpj_cf ); // get cf of (j)
 
+		factor = C.TO_EV * (2.*M_PI/C.volume)*(Qi*Qj)*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr;
+		intact[0] = cos(Rij.adjoint()*G); // cos{(Rj-Ri).G}
+		intact[1] = sin(Rij.adjoint()*G); // sin{(Rj-Ri).G}
 
+		Manager::support_h_matrix_reci(lpi,G,this->man_matrix4d_h_reci_ws,this->man_matrix4d_h_reci_out); // man_matrix4d_h_reci_ws/out [0..1] : 0 cosine / 1 sine ... return unit dimensionless
+
+		// grad taken for (i)
+		for(int u=0;u<4;u++)
+		{	for(int v=0;v<4;v++)
+			{	for(int l=0;l<4;l++)
+				{	for(int s=0;s<4;s++)
+					{ this->LPLP_H_Reci_Derivative[i][j][0](u,v) -= factor*(lpj_cf[l]*lpj_cf[s]*(this->man_matrix4d_h_reci_out[0](l,s)*(-intact[1]*G(0)*this->man_matrix4d_h_reci_out[0](u,v) - intact[0]*G(0)*this->man_matrix4d_h_reci_out[1](u,v))
+					  									    +this->man_matrix4d_h_reci_out[1](l,s)*(-intact[1]*G(0)*this->man_matrix4d_h_reci_out[1](u,v) + intact[0]*G(0)*this->man_matrix4d_h_reci_out[0](u,v))));
+
+					  this->LPLP_H_Reci_Derivative[i][j][1](u,v) -= factor*(lpj_cf[l]*lpj_cf[s]*(this->man_matrix4d_h_reci_out[0](l,s)*(-intact[1]*G(1)*this->man_matrix4d_h_reci_out[0](u,v) - intact[0]*G(1)*this->man_matrix4d_h_reci_out[1](u,v))
+					  			 						    +this->man_matrix4d_h_reci_out[1](l,s)*(-intact[1]*G(1)*this->man_matrix4d_h_reci_out[1](u,v) + intact[0]*G(1)*this->man_matrix4d_h_reci_out[0](u,v))));	
+
+					  this->LPLP_H_Reci_Derivative[i][j][2](u,v) -= factor*(lpj_cf[l]*lpj_cf[s]*(this->man_matrix4d_h_reci_out[0](l,s)*(-intact[1]*G(2)*this->man_matrix4d_h_reci_out[0](u,v) - intact[0]*G(2)*this->man_matrix4d_h_reci_out[1](u,v))
+					  			 						    +this->man_matrix4d_h_reci_out[1](l,s)*(-intact[1]*G(2)*this->man_matrix4d_h_reci_out[1](u,v) + intact[0]*G(2)*this->man_matrix4d_h_reci_out[0](u,v))));	
+					}
+				}
+			}
+		}
+		/* Description add!  Feb 10 2023
+
+		H_LPLP_Reci[a][b](u,v) += f * cb_l * cb_s * ( CosInt_b(l,s) * ( cos(G.Rab) * CosInt_a(u,v) - sin(G.Rab) * SinInt_a(u,v) )
+							    + SinInt_b(l,s) * ( cos(G.Rab) * SinInt_a(u,v) + sin(G.Rab) * CosInt_a(u,v) ) );
+ 			
+		Rab = Rb - Ra; derivative is taken w.r.t. 'b' but want to keep for 'a', therefore sign is inverted..
+
+		e.g. 
+			dxb cos(G.Rab) = -sin(G.Rab) * Gx , dxb sin(G.Rab) = cos(G.Rab) * Gx
+			dyb cos(G.Rab) = -sin(G.Rab) * Gy , dyb sin(G.Rab) = cos(G.Rab) * Gy
+			dzb cos(G.Rab) = -sin(G.Rab) * Gz , dzb sin(G.Rab) = cos(G.Rab) * Gz
+
+		dxHab[a][b](u,v) -= f * cb_l * cb_s * ( CosInt_b(l,s) * ( -sin(G.Rab)*Gx * CosInt_a(u,v) - cos(G.Rab)*Gx * SinInt_a(u,v) )
+						      + SinInt_b(l,s) * ( -sin(G.Rab)*Gx * SinInt_a(u,v) + cos(G.Rab)*Gx * CosInt_a(u,v) )
+
+		dyHab[a][b](u,v) -= f * cb_l * cb_s * ( CosInt_b(l,s) * ( -sin(G.Rab)*Gy * CosInt_a(u,v) - cos(G.Rab)*Gy * SinInt_a(u,v) )
+						      + SinInt_b(l,s) * ( -sin(G.Rab)*Gy * SinInt_a(u,v) + cos(G.Rab)*Gy * CosInt_a(u,v) )
+
+		dzHab[a][b](u,v) -= f * cb_l * cb_s * ( CosInt_b(l,s) * ( -sin(G.Rab)*Gz * CosInt_a(u,v) - cos(G.Rab)*Gz * SinInt_a(u,v) )
+						      + SinInt_b(l,s) * ( -sin(G.Rab)*Gz * SinInt_a(u,v) + cos(G.Rab)*Gz * CosInt_a(u,v) )
+ 		*/
 	}
 
 	return;
 }
 
-void Manager::CoulombLonePairDerivativeReci( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector )
+void Manager::CoulombLonePairDerivativeReci( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector /* G */)
 {
 	double Qi,Qj;
 	double g_norm = TransVector.norm();
@@ -3162,12 +3274,414 @@ void Manager::CoulombLonePairDerivativeReci( Cell& C, const int i, const int j, 
 
 		C.AtomList[i]->cart_gd += intact * TransVector;
 		C.AtomList[j]->cart_gd -= intact * TransVector;
-        }       
+        }
+	Manager::set_h_matrix_reci_derivative( C, i, j, TransVector );	// TransVector = G
 }       
+
+
+
+/* Atom.hpp Reference
+ *
+ * int GetGSIndex() { return this->lp_gs_index; }
+ * double GetEval( const int i ){ return this->lp_eigensolver.eigenvalues()[i].real(); }                           // Get (i) Eval
+ * double GetEvec( const int i, const int j ){ return this->lp_eigensolver.eigenvectors()(i,j).real(); }           // Get (i,j) Evec ---> 'j' is a state
+ * void GetEvecGS( double (&v)[4] )
+ */
+
+
+
+
+void Manager::grad_evec_cart_solver( Cell& C )
+{
+	const int cycmx = 100;
+	double ssqr = 0.;
+
+	LonePair* lpk;
+	double evk[4];
+
+	Eigen::Matrix4d dh_matrix_tmp[3];	// [3] ... for x, y and z
+	dh_matrix_tmp[0].setZero(); dh_matrix_tmp[1].setZero(); dh_matrix_tmp[2].setZero();
+
+	// in Manager.hpp
+	// Eigen::Vector4d grad_evec_aux[MX_C][MX_C][2][3];
+	// Eigen::Vector4d grad_evec[MX_C][MX_C][2][3];    // [i][j][2][3]: Rij(=Rj-Ri) Grad(i) // [2] : shell / core // [3] : x, y and z
+
+	for(int i=0;i<C.NumberOfAtoms;i++)
+	{	for(int j=0;j<C.NumberOfAtoms;j++)
+		{	for(int k=0;k<3;k++)
+			{								// dcj^()/dki
+				this->grad_evec_lp_aux[i][j][k].setZero();	this->grad_evec_lp[i][j][k].setZero();
+				this->grad_evec_mm_aux[i][j][0][k].setZero();	this->grad_evec_mm[i][j][0][k].setZero();	// [0] core
+				this->grad_evec_mm_aux[i][j][1][k].setZero();	this->grad_evec_mm[i][j][1][k].setZero();	// [1] shel
+					// dcj^()/dki_shell
+			}
+		}
+	}
+
+
+	/*
+		Using Jacobi-Iteration Method
+	*/
+	for(int cyc=0;cyc<cycmx;cyc++)
+	{
+		/* Convention (in Thesis)
+ 		   
+ 		   j -> alpha
+		   k -> beta
+
+		   i -> differentiate with (i)th something ... in general 'Cartesian Coordinate'
+		*/
+	
+		// Step 1. versus LP centres
+		for(int i=0;i<C.NumberOfAtoms;i++) // differentiate with (i)
+		{	
+			if( C.AtomList[i]->type == "lone" )
+			{	
+				for(int j=0;j<C.NumberOfAtoms;j++) // (j) .eq. alpha
+				{	
+					if( C.AtomList[j]->type == "lone" )
+					{	
+						if( i == j ) // here i == j means all MM must be included!! - see the master eqns in phD thesis
+						{
+							// versus MM ions
+							for(int k=0;k<C.NumberOfAtoms;k++) // (k) .eq. A
+							{
+								if( C.AtomList[k]->type == "core" )
+								{
+									dh_matrix_tmp[0] += this->LPC_H_Real_Derivative[i][k][0][0];
+									dh_matrix_tmp[1] += this->LPC_H_Real_Derivative[i][k][0][1];
+									dh_matrix_tmp[2] += this->LPC_H_Real_Derivative[i][k][0][2];
+
+									dh_matrix_tmp[0] += this->LPC_H_Reci_Derivative[i][k][0][0];
+									dh_matrix_tmp[1] += this->LPC_H_Reci_Derivative[i][k][0][1];
+									dh_matrix_tmp[2] += this->LPC_H_Reci_Derivative[i][k][0][2];
+								}
+
+								if( C.AtomList[k]->type == "shel" )
+								{	// NotImplemented
+								}
+							}
+
+							for(int k=0;k<C.NumberOfAtoms;k++) // (k) .eq. beta // note that i = j
+							{
+								if( C.AtomList[k]->type == "lone" )
+								{
+									if( k != j )
+									{
+										lpk = static_cast<LonePair*>(C.AtomList[k]);
+										lpk->GetEvecGS(evk);
+										// versus LP (k) core real
+										dh_matrix_tmp[0] += this->LPC_H_Real_Derivative[i][k][0][0];
+										dh_matrix_tmp[1] += this->LPC_H_Real_Derivative[i][k][0][1];
+										dh_matrix_tmp[2] += this->LPC_H_Real_Derivative[i][k][0][2];
+										// versus LP (k) core reci
+										dh_matrix_tmp[0] += this->LPC_H_Reci_Derivative[i][k][0][0];
+										dh_matrix_tmp[1] += this->LPC_H_Reci_Derivative[i][k][0][1];
+										dh_matrix_tmp[2] += this->LPC_H_Reci_Derivative[i][k][0][2];
+		
+										// versus LP (k) monopole and dipole real
+										dh_matrix_tmp[0] += this->LPLP_H_Real_Derivative[i][k][0];
+										dh_matrix_tmp[1] += this->LPLP_H_Real_Derivative[i][k][1];
+										dh_matrix_tmp[2] += this->LPLP_H_Real_Derivative[i][k][2];
+										// versus LP (k) monopole and dipole reci
+										dh_matrix_tmp[0] += this->LPLP_H_Reci_Derivative[i][k][0];
+										dh_matrix_tmp[1] += this->LPLP_H_Reci_Derivative[i][k][1];
+										dh_matrix_tmp[2] += this->LPLP_H_Reci_Derivative[i][k][2];
+
+										// Contribution by EvecDerivatives
+
+										// Real			           dck(0;s)/dxi        ck(1;px)
+										dh_matrix_tmp[0] += (  2.*(this->grad_evec_lp[i][k][0](0)*evk[1] + evk[0]*this->grad_evec_lp[i][k][0](1))*this->LPLP_H_Real_Aux[i][k][0]
+												     + 2.*(this->grad_evec_lp[i][k][0](0)*evk[2] + evk[0]*this->grad_evec_lp[i][k][0](2))*this->LPLP_H_Real_Aux[i][k][1]
+												     + 2.*(this->grad_evec_lp[i][k][0](0)*evk[3] + evk[0]*this->grad_evec_lp[i][k][0](3))*this->LPLP_H_Real_Aux[i][k][2] );
+
+										dh_matrix_tmp[1] += (  2.*(this->grad_evec_lp[i][k][1](0)*evk[1] + evk[0]*this->grad_evec_lp[i][k][1](1))*this->LPLP_H_Real_Aux[i][k][0]
+												     + 2.*(this->grad_evec_lp[i][k][1](0)*evk[2] + evk[0]*this->grad_evec_lp[i][k][1](2))*this->LPLP_H_Real_Aux[i][k][1]
+												     + 2.*(this->grad_evec_lp[i][k][1](0)*evk[3] + evk[0]*this->grad_evec_lp[i][k][1](3))*this->LPLP_H_Real_Aux[i][k][2] );
+
+										dh_matrix_tmp[2] += (  2.*(this->grad_evec_lp[i][k][2](0)*evk[1] + evk[0]*this->grad_evec_lp[i][k][2](1))*this->LPLP_H_Real_Aux[i][k][0]
+												     + 2.*(this->grad_evec_lp[i][k][2](0)*evk[2] + evk[0]*this->grad_evec_lp[i][k][2](2))*this->LPLP_H_Real_Aux[i][k][1]
+												     + 2.*(this->grad_evec_lp[i][k][2](0)*evk[3] + evk[0]*this->grad_evec_lp[i][k][2](3))*this->LPLP_H_Real_Aux[i][k][2] );
+
+										// Reci
+										dh_matrix_tmp[0] += (     (this->grad_evec_lp[i][k][0](0)*evk[0] + evk[0]*this->grad_evec_lp[i][k][0](0))*this->LPLP_H_Reci_Aux[i][k][0]	//  ss
+												     + 2.*(this->grad_evec_lp[i][k][0](0)*evk[1] + evk[0]*this->grad_evec_lp[i][k][0](1))*this->LPLP_H_Reci_Aux[i][k][1]	// 2sx
+												     + 2.*(this->grad_evec_lp[i][k][0](0)*evk[2] + evk[0]*this->grad_evec_lp[i][k][0](2))*this->LPLP_H_Reci_Aux[i][k][2]	// 2sy
+												     + 2.*(this->grad_evec_lp[i][k][0](0)*evk[3] + evk[0]*this->grad_evec_lp[i][k][0](3))*this->LPLP_H_Reci_Aux[i][k][3]	// 2sz
+												     +    (this->grad_evec_lp[i][k][0](1)*evk[1] + evk[1]*this->grad_evec_lp[i][k][0](1))*this->LPLP_H_Reci_Aux[i][k][4]	//  xx
+												     + 2.*(this->grad_evec_lp[i][k][0](1)*evk[2] + evk[1]*this->grad_evec_lp[i][k][0](2))*this->LPLP_H_Reci_Aux[i][k][5]	// 2xy
+												     + 2.*(this->grad_evec_lp[i][k][0](1)*evk[3] + evk[1]*this->grad_evec_lp[i][k][0](3))*this->LPLP_H_Reci_Aux[i][k][6]	// 2xz
+												     +    (this->grad_evec_lp[i][k][0](2)*evk[2] + evk[2]*this->grad_evec_lp[i][k][0](2))*this->LPLP_H_Reci_Aux[i][k][7]	//  yy
+												     + 2.*(this->grad_evec_lp[i][k][0](2)*evk[3] + evk[2]*this->grad_evec_lp[i][k][0](3))*this->LPLP_H_Reci_Aux[i][k][8]	//  yz
+												     +    (this->grad_evec_lp[i][k][0](3)*evk[3] + evk[3]*this->grad_evec_lp[i][k][0](3))*this->LPLP_H_Reci_Aux[i][k][9] );	//  zz
+
+										dh_matrix_tmp[1] += (     (this->grad_evec_lp[i][k][1](0)*evk[0] + evk[0]*this->grad_evec_lp[i][k][1](0))*this->LPLP_H_Reci_Aux[i][k][0]	//  ss
+												     + 2.*(this->grad_evec_lp[i][k][1](0)*evk[1] + evk[0]*this->grad_evec_lp[i][k][1](1))*this->LPLP_H_Reci_Aux[i][k][1]	// 2sx
+												     + 2.*(this->grad_evec_lp[i][k][1](0)*evk[2] + evk[0]*this->grad_evec_lp[i][k][1](2))*this->LPLP_H_Reci_Aux[i][k][2]	// 2sy
+												     + 2.*(this->grad_evec_lp[i][k][1](0)*evk[3] + evk[0]*this->grad_evec_lp[i][k][1](3))*this->LPLP_H_Reci_Aux[i][k][3]	// 2sz
+												     +    (this->grad_evec_lp[i][k][1](1)*evk[1] + evk[1]*this->grad_evec_lp[i][k][1](1))*this->LPLP_H_Reci_Aux[i][k][4]	//  xx
+												     + 2.*(this->grad_evec_lp[i][k][1](1)*evk[2] + evk[1]*this->grad_evec_lp[i][k][1](2))*this->LPLP_H_Reci_Aux[i][k][5]	// 2xy
+												     + 2.*(this->grad_evec_lp[i][k][1](1)*evk[3] + evk[1]*this->grad_evec_lp[i][k][1](3))*this->LPLP_H_Reci_Aux[i][k][6]	// 2xz
+												     +    (this->grad_evec_lp[i][k][1](2)*evk[2] + evk[2]*this->grad_evec_lp[i][k][1](2))*this->LPLP_H_Reci_Aux[i][k][7]	//  yy
+												     + 2.*(this->grad_evec_lp[i][k][1](2)*evk[3] + evk[2]*this->grad_evec_lp[i][k][1](3))*this->LPLP_H_Reci_Aux[i][k][8]	//  yz
+												     +    (this->grad_evec_lp[i][k][1](3)*evk[3] + evk[3]*this->grad_evec_lp[i][k][1](3))*this->LPLP_H_Reci_Aux[i][k][9] );	//  zz
+
+										dh_matrix_tmp[2] += (     (this->grad_evec_lp[i][k][2](0)*evk[0] + evk[0]*this->grad_evec_lp[i][k][2](0))*this->LPLP_H_Reci_Aux[i][k][0]	//  ss
+												     + 2.*(this->grad_evec_lp[i][k][2](0)*evk[1] + evk[0]*this->grad_evec_lp[i][k][2](1))*this->LPLP_H_Reci_Aux[i][k][1]	// 2sx
+												     + 2.*(this->grad_evec_lp[i][k][2](0)*evk[2] + evk[0]*this->grad_evec_lp[i][k][2](2))*this->LPLP_H_Reci_Aux[i][k][2]	// 2sy
+												     + 2.*(this->grad_evec_lp[i][k][2](0)*evk[3] + evk[0]*this->grad_evec_lp[i][k][2](3))*this->LPLP_H_Reci_Aux[i][k][3]	// 2sz
+												     +    (this->grad_evec_lp[i][k][2](1)*evk[1] + evk[1]*this->grad_evec_lp[i][k][2](1))*this->LPLP_H_Reci_Aux[i][k][4]	//  xx
+												     + 2.*(this->grad_evec_lp[i][k][2](1)*evk[2] + evk[1]*this->grad_evec_lp[i][k][2](2))*this->LPLP_H_Reci_Aux[i][k][5]	// 2xy
+												     + 2.*(this->grad_evec_lp[i][k][2](1)*evk[3] + evk[1]*this->grad_evec_lp[i][k][2](3))*this->LPLP_H_Reci_Aux[i][k][6]	// 2xz
+												     +    (this->grad_evec_lp[i][k][2](2)*evk[2] + evk[2]*this->grad_evec_lp[i][k][2](2))*this->LPLP_H_Reci_Aux[i][k][7]	//  yy
+												     + 2.*(this->grad_evec_lp[i][k][2](2)*evk[3] + evk[2]*this->grad_evec_lp[i][k][2](3))*this->LPLP_H_Reci_Aux[i][k][8]	//  yz
+												     +    (this->grad_evec_lp[i][k][2](3)*evk[3] + evk[3]*this->grad_evec_lp[i][k][2](3))*this->LPLP_H_Reci_Aux[i][k][9] );	//  zz
+									} // end : if( k != j )
+
+									if( k == j ) // self interaction ... LPcore - LP
+									{
+										dh_matrix_tmp[0] += this->LP_H_Self_Derivative[i][0];
+										dh_matrix_tmp[1] += this->LP_H_Self_Derivative[i][1];
+										dh_matrix_tmp[2] += this->LP_H_Self_Derivative[i][2];
+									} 
+
+								}// end : if( C.AtomList[k]->type == "lone" )
+
+							}// end : for(int k=0;k<C.NumberOfAtoms;k++) // versus LP
+
+							// DO_SOMETHING ... CPHF to update evec derivatives - not Implemented
+
+							dh_matrix_tmp[0].setZero(); dh_matrix_tmp[1].setZero(); dh_matrix_tmp[2].setZero();
+
+						}// end : if( i == j )
+						
+						if( i != j ) // defferentiate (j)-LP w.r.t. (i)-LP dHjk/dxi but i != j; therefore, MM terms vanish, also i!=j -> no self derivative contribution
+						{
+							for(int k=0;k<C.NumberOfAtoms;k++) // (k) .eq. beta // (j) .eq. alpha
+							{
+								if( C.AtomList[k]->type == "lone" )
+								{
+									if( k != j )
+									{
+										lpk = static_cast<LonePair*>(C.AtomList[k]);
+										lpk->GetEvecGS(evk);
+
+										if( k == i )	// differentiate with 'i', therfore only applied when k == i
+										{
+											// versus LP (i) core Real - sign inverted
+											dh_matrix_tmp[0] += -this->LPC_H_Real_Derivative[j][i][0][0];
+											dh_matrix_tmp[1] += -this->LPC_H_Real_Derivative[j][i][0][1];
+											dh_matrix_tmp[2] += -this->LPC_H_Real_Derivative[j][i][0][2];
+											// versus LP (i) core Reci - sign inverted
+											dh_matrix_tmp[0] += -this->LPC_H_Reci_Derivative[j][i][0][0];
+											dh_matrix_tmp[1] += -this->LPC_H_Reci_Derivative[j][i][0][1];
+											dh_matrix_tmp[2] += -this->LPC_H_Reci_Derivative[j][i][0][2];
+											// versus LP (i) monopole and dipole real - sign inverted
+											dh_matrix_tmp[0] += -this->LPLP_H_Real_Derivative[j][i][0];			
+											dh_matrix_tmp[1] += -this->LPLP_H_Real_Derivative[j][i][1];			
+											dh_matrix_tmp[2] += -this->LPLP_H_Real_Derivative[j][i][2];			
+											// versus LP (i) monopole and dipole reci - sign inverted
+											dh_matrix_tmp[0] += -this->LPLP_H_Reci_Derivative[j][i][0];			
+											dh_matrix_tmp[1] += -this->LPLP_H_Reci_Derivative[j][i][1];			
+											dh_matrix_tmp[2] += -this->LPLP_H_Reci_Derivative[j][i][2];			
+										} // end : if( k == i )
+
+										// Contribution by Evec Derivatives
+										// Real			                dck(0:s)/dxi * ck(1;px)
+										dh_matrix_tmp[0] += (  2.*(this->grad_evec_lp[i][k][0](0)*evk[1] + evk[0]*this->grad_evec_lp[i][k][0](1))*this->LPLP_H_Real_Aux[j][k][0]
+												     + 2.*(this->grad_evec_lp[i][k][0](0)*evk[2] + evk[0]*this->grad_evec_lp[i][k][0](2))*this->LPLP_H_Real_Aux[j][k][1]
+												     + 2.*(this->grad_evec_lp[i][k][0](0)*evk[3] + evk[0]*this->grad_evec_lp[i][k][0](3))*this->LPLP_H_Real_Aux[j][k][2] );
+
+										dh_matrix_tmp[1] += (  2.*(this->grad_evec_lp[i][k][1](0)*evk[1] + evk[0]*this->grad_evec_lp[i][k][1](1))*this->LPLP_H_Real_Aux[j][k][0]
+												     + 2.*(this->grad_evec_lp[i][k][1](0)*evk[2] + evk[0]*this->grad_evec_lp[i][k][1](2))*this->LPLP_H_Real_Aux[j][k][1]
+												     + 2.*(this->grad_evec_lp[i][k][1](0)*evk[3] + evk[0]*this->grad_evec_lp[i][k][1](3))*this->LPLP_H_Real_Aux[j][k][2] );
+
+										dh_matrix_tmp[2] += (  2.*(this->grad_evec_lp[i][k][2](0)*evk[1] + evk[0]*this->grad_evec_lp[i][k][2](1))*this->LPLP_H_Real_Aux[j][k][0]
+												     + 2.*(this->grad_evec_lp[i][k][2](0)*evk[2] + evk[0]*this->grad_evec_lp[i][k][2](2))*this->LPLP_H_Real_Aux[j][k][1]
+												     + 2.*(this->grad_evec_lp[i][k][2](0)*evk[3] + evk[0]*this->grad_evec_lp[i][k][2](3))*this->LPLP_H_Real_Aux[j][k][2] );
+									
+										// Reci
+										dh_matrix_tmp[0] += (     (this->grad_evec_lp[i][k][0](0)*evk[0] + evk[0]*this->grad_evec_lp[i][k][0](0))*this->LPLP_H_Reci_Aux[j][k][0]	//  ss
+												     + 2.*(this->grad_evec_lp[i][k][0](0)*evk[1] + evk[0]*this->grad_evec_lp[i][k][0](1))*this->LPLP_H_Reci_Aux[j][k][1]	// 2sx
+												     + 2.*(this->grad_evec_lp[i][k][0](0)*evk[2] + evk[0]*this->grad_evec_lp[i][k][0](2))*this->LPLP_H_Reci_Aux[j][k][2]	// 2sy
+												     + 2.*(this->grad_evec_lp[i][k][0](0)*evk[3] + evk[0]*this->grad_evec_lp[i][k][0](3))*this->LPLP_H_Reci_Aux[j][k][3]	// 2sz
+												     +    (this->grad_evec_lp[i][k][0](1)*evk[1] + evk[1]*this->grad_evec_lp[i][k][0](1))*this->LPLP_H_Reci_Aux[j][k][4]	//  xx
+												     + 2.*(this->grad_evec_lp[i][k][0](1)*evk[2] + evk[1]*this->grad_evec_lp[i][k][0](2))*this->LPLP_H_Reci_Aux[j][k][5]	// 2xy
+												     + 2.*(this->grad_evec_lp[i][k][0](1)*evk[3] + evk[1]*this->grad_evec_lp[i][k][0](3))*this->LPLP_H_Reci_Aux[j][k][6]	// 2xz
+												     +    (this->grad_evec_lp[i][k][0](2)*evk[2] + evk[2]*this->grad_evec_lp[i][k][0](2))*this->LPLP_H_Reci_Aux[j][k][7]	//  yy
+												     + 2.*(this->grad_evec_lp[i][k][0](2)*evk[3] + evk[2]*this->grad_evec_lp[i][k][0](3))*this->LPLP_H_Reci_Aux[j][k][8]	//  yz
+												     +    (this->grad_evec_lp[i][k][0](3)*evk[3] + evk[3]*this->grad_evec_lp[i][k][0](3))*this->LPLP_H_Reci_Aux[j][k][9] );	//  zz
+
+										dh_matrix_tmp[1] += (     (this->grad_evec_lp[i][k][1](0)*evk[0] + evk[0]*this->grad_evec_lp[i][k][1](0))*this->LPLP_H_Reci_Aux[j][k][0]	//  ss
+												     + 2.*(this->grad_evec_lp[i][k][1](0)*evk[1] + evk[0]*this->grad_evec_lp[i][k][1](1))*this->LPLP_H_Reci_Aux[j][k][1]	// 2sx
+												     + 2.*(this->grad_evec_lp[i][k][1](0)*evk[2] + evk[0]*this->grad_evec_lp[i][k][1](2))*this->LPLP_H_Reci_Aux[j][k][2]	// 2sy
+												     + 2.*(this->grad_evec_lp[i][k][1](0)*evk[3] + evk[0]*this->grad_evec_lp[i][k][1](3))*this->LPLP_H_Reci_Aux[j][k][3]	// 2sz
+												     +    (this->grad_evec_lp[i][k][1](1)*evk[1] + evk[1]*this->grad_evec_lp[i][k][1](1))*this->LPLP_H_Reci_Aux[j][k][4]	//  xx
+												     + 2.*(this->grad_evec_lp[i][k][1](1)*evk[2] + evk[1]*this->grad_evec_lp[i][k][1](2))*this->LPLP_H_Reci_Aux[j][k][5]	// 2xy
+												     + 2.*(this->grad_evec_lp[i][k][1](1)*evk[3] + evk[1]*this->grad_evec_lp[i][k][1](3))*this->LPLP_H_Reci_Aux[j][k][6]	// 2xz
+												     +    (this->grad_evec_lp[i][k][1](2)*evk[2] + evk[2]*this->grad_evec_lp[i][k][1](2))*this->LPLP_H_Reci_Aux[j][k][7]	//  yy
+												     + 2.*(this->grad_evec_lp[i][k][1](2)*evk[3] + evk[2]*this->grad_evec_lp[i][k][1](3))*this->LPLP_H_Reci_Aux[j][k][8]	//  yz
+												     +    (this->grad_evec_lp[i][k][1](3)*evk[3] + evk[3]*this->grad_evec_lp[i][k][1](3))*this->LPLP_H_Reci_Aux[j][k][9] );	//  zz
+
+										dh_matrix_tmp[2] += (     (this->grad_evec_lp[i][k][2](0)*evk[0] + evk[0]*this->grad_evec_lp[i][k][2](0))*this->LPLP_H_Reci_Aux[j][k][0]	//  ss
+												     + 2.*(this->grad_evec_lp[i][k][2](0)*evk[1] + evk[0]*this->grad_evec_lp[i][k][2](1))*this->LPLP_H_Reci_Aux[j][k][1]	// 2sx
+												     + 2.*(this->grad_evec_lp[i][k][2](0)*evk[2] + evk[0]*this->grad_evec_lp[i][k][2](2))*this->LPLP_H_Reci_Aux[j][k][2]	// 2sy
+												     + 2.*(this->grad_evec_lp[i][k][2](0)*evk[3] + evk[0]*this->grad_evec_lp[i][k][2](3))*this->LPLP_H_Reci_Aux[j][k][3]	// 2sz
+												     +    (this->grad_evec_lp[i][k][2](1)*evk[1] + evk[1]*this->grad_evec_lp[i][k][2](1))*this->LPLP_H_Reci_Aux[j][k][4]	//  xx
+												     + 2.*(this->grad_evec_lp[i][k][2](1)*evk[2] + evk[1]*this->grad_evec_lp[i][k][2](2))*this->LPLP_H_Reci_Aux[j][k][5]	// 2xy
+												     + 2.*(this->grad_evec_lp[i][k][2](1)*evk[3] + evk[1]*this->grad_evec_lp[i][k][2](3))*this->LPLP_H_Reci_Aux[j][k][6]	// 2xz
+												     +    (this->grad_evec_lp[i][k][2](2)*evk[2] + evk[2]*this->grad_evec_lp[i][k][2](2))*this->LPLP_H_Reci_Aux[j][k][7]	//  yy
+												     + 2.*(this->grad_evec_lp[i][k][2](2)*evk[3] + evk[2]*this->grad_evec_lp[i][k][2](3))*this->LPLP_H_Reci_Aux[j][k][8]	//  yz
+												     +    (this->grad_evec_lp[i][k][2](3)*evk[3] + evk[3]*this->grad_evec_lp[i][k][2](3))*this->LPLP_H_Reci_Aux[j][k][9] );	//  zz
+									}// end : if( k != j )
+
+								}// end : if( C.AtomList[k]->type == "lone" )
+
+							}// end : for(int k=0;k<C.NumberOfAtoms;k++) // versus other LP Centres
+
+							// DO SOMETHING ... CPHF to update evec derivatives - not Implemented
+							dh_matrix_tmp[0].setZero(); dh_matrix_tmp[1].setZero(); dh_matrix_tmp[2].setZero();
+
+						}// end : if( i != j )
+
+					}// end : if( C.AtomList[j]->type == "lone" ) // if (j) is LP
+
+				}// end : for(int j=0;j<C.NumberOfAtoms;j++) ; (j) --- alpha (if using thesis convention)
+
+			}// end : if( C.AtomList[i]->type == "lone" )     // if (i) is LP
+
+		}// end : for(int i=0;i<C.NumberOfAtoms;i++) // Finalise Step 1.
+
+
+		// Step 2. versus MM Centres ... curret version ~ 13 Feb 2023 only 'cores'
+		for(int i=0;i<C.NumberOfAtoms;i++) // differentiate with the (i)th MM core
+		{
+			if( C.AtomList[i]->type == "core" )
+			{
+				for(int j=0;j<C.NumberOfAtoms;j++) // (j) .eq. alpha
+				{
+					if( C.AtomList[j]->type == "lone" )
+					{
+						for(int k=0;k<C.NumberOfAtoms;k++) // (k) .eq. A
+						{
+							if( C.AtomList[k]->type == "core" )
+							{
+								if( k == i )
+								{	// Real
+									dh_matrix_tmp[0] += -this->LPC_H_Real_Derivative[j][i][0][0];	 // note i == k	 where (i) is core
+									dh_matrix_tmp[1] += -this->LPC_H_Real_Derivative[j][i][0][1];
+									dh_matrix_tmp[2] += -this->LPC_H_Real_Derivative[j][i][0][2];
+									// Reci
+									dh_matrix_tmp[0] += -this->LPC_H_Reci_Derivative[j][i][0][0];
+									dh_matrix_tmp[1] += -this->LPC_H_Reci_Derivative[j][i][0][1];
+									dh_matrix_tmp[2] += -this->LPC_H_Reci_Derivative[j][i][0][2];
+								}// end : if( k == i )
+
+							}// end : if( C.AtomList[k] == "core" )
+
+						}// end : for(int k=0;k<C.NumberOfAtoms;k++)
+						
+						for(int k=0;k<C.NumberOfAtoms;k++) // (k) .eq. beta
+						{
+							if( C.AtomList[k]->type == "lone" )
+							{
+								if( k != j )
+								{
+									lpk = static_cast<LonePair*>(C.AtomList[k]);
+									lpk->GetEvecGS(evk);
+
+									// Contribution by Evec Derivatives
+									// Real			                dck(0:s)/dxi * ck(1;px)
+									dh_matrix_tmp[0] += (  2.*(this->grad_evec_mm[i][k][0][0](0)*evk[1] + evk[0]*this->grad_evec_mm[i][k][0][0](1))*this->LPLP_H_Real_Aux[j][k][0]
+											     + 2.*(this->grad_evec_mm[i][k][0][0](0)*evk[2] + evk[0]*this->grad_evec_mm[i][k][0][0](2))*this->LPLP_H_Real_Aux[j][k][1]
+											     + 2.*(this->grad_evec_mm[i][k][0][0](0)*evk[3] + evk[0]*this->grad_evec_mm[i][k][0][0](3))*this->LPLP_H_Real_Aux[j][k][2] );
+															  //^-core [0]	i.e., (i) is core		      ^-core [0]
+									dh_matrix_tmp[1] += (  2.*(this->grad_evec_mm[i][k][0][1](0)*evk[1] + evk[0]*this->grad_evec_mm[i][k][0][1](1))*this->LPLP_H_Real_Aux[j][k][0]
+											     + 2.*(this->grad_evec_mm[i][k][0][1](0)*evk[2] + evk[0]*this->grad_evec_mm[i][k][0][1](2))*this->LPLP_H_Real_Aux[j][k][1]
+											     + 2.*(this->grad_evec_mm[i][k][0][1](0)*evk[3] + evk[0]*this->grad_evec_mm[i][k][0][1](3))*this->LPLP_H_Real_Aux[j][k][2] );
+
+									dh_matrix_tmp[2] += (  2.*(this->grad_evec_mm[i][k][0][2](0)*evk[1] + evk[0]*this->grad_evec_mm[i][k][0][2](1))*this->LPLP_H_Real_Aux[j][k][0]
+											     + 2.*(this->grad_evec_mm[i][k][0][2](0)*evk[2] + evk[0]*this->grad_evec_mm[i][k][0][2](2))*this->LPLP_H_Real_Aux[j][k][1]
+											     + 2.*(this->grad_evec_mm[i][k][0][2](0)*evk[3] + evk[0]*this->grad_evec_mm[i][k][0][2](3))*this->LPLP_H_Real_Aux[j][k][2] );
+									
+									// Reci
+									dh_matrix_tmp[0] += (     (this->grad_evec_mm[i][k][0][0](0)*evk[0] + evk[0]*this->grad_evec_mm[i][k][0][0](0))*this->LPLP_H_Reci_Aux[j][k][0]	//  ss
+											     + 2.*(this->grad_evec_mm[i][k][0][0](0)*evk[1] + evk[0]*this->grad_evec_mm[i][k][0][0](1))*this->LPLP_H_Reci_Aux[j][k][1]	// 2sx
+											     + 2.*(this->grad_evec_mm[i][k][0][0](0)*evk[2] + evk[0]*this->grad_evec_mm[i][k][0][0](2))*this->LPLP_H_Reci_Aux[j][k][2]	// 2sy
+											     + 2.*(this->grad_evec_mm[i][k][0][0](0)*evk[3] + evk[0]*this->grad_evec_mm[i][k][0][0](3))*this->LPLP_H_Reci_Aux[j][k][3]	// 2sz
+											     +    (this->grad_evec_mm[i][k][0][0](1)*evk[1] + evk[1]*this->grad_evec_mm[i][k][0][0](1))*this->LPLP_H_Reci_Aux[j][k][4]	//  xx
+											     + 2.*(this->grad_evec_mm[i][k][0][0](1)*evk[2] + evk[1]*this->grad_evec_mm[i][k][0][0](2))*this->LPLP_H_Reci_Aux[j][k][5]	// 2xy
+											     + 2.*(this->grad_evec_mm[i][k][0][0](1)*evk[3] + evk[1]*this->grad_evec_mm[i][k][0][0](3))*this->LPLP_H_Reci_Aux[j][k][6]	// 2xz
+											     +    (this->grad_evec_mm[i][k][0][0](2)*evk[2] + evk[2]*this->grad_evec_mm[i][k][0][0](2))*this->LPLP_H_Reci_Aux[j][k][7]	//  yy
+											     + 2.*(this->grad_evec_mm[i][k][0][0](2)*evk[3] + evk[2]*this->grad_evec_mm[i][k][0][0](3))*this->LPLP_H_Reci_Aux[j][k][8]	//  yz
+											     +    (this->grad_evec_mm[i][k][0][0](3)*evk[3] + evk[3]*this->grad_evec_mm[i][k][0][0](3))*this->LPLP_H_Reci_Aux[j][k][9] );	//  zz
+
+									dh_matrix_tmp[1] += (     (this->grad_evec_mm[i][k][0][1](0)*evk[0] + evk[0]*this->grad_evec_mm[i][k][0][1](0))*this->LPLP_H_Reci_Aux[j][k][0]	//  ss
+											     + 2.*(this->grad_evec_mm[i][k][0][1](0)*evk[1] + evk[0]*this->grad_evec_mm[i][k][0][1](1))*this->LPLP_H_Reci_Aux[j][k][1]	// 2sx
+											     + 2.*(this->grad_evec_mm[i][k][0][1](0)*evk[2] + evk[0]*this->grad_evec_mm[i][k][0][1](2))*this->LPLP_H_Reci_Aux[j][k][2]	// 2sy
+											     + 2.*(this->grad_evec_mm[i][k][0][1](0)*evk[3] + evk[0]*this->grad_evec_mm[i][k][0][1](3))*this->LPLP_H_Reci_Aux[j][k][3]	// 2sz
+											     +    (this->grad_evec_mm[i][k][0][1](1)*evk[1] + evk[1]*this->grad_evec_mm[i][k][0][1](1))*this->LPLP_H_Reci_Aux[j][k][4]	//  xx
+											     + 2.*(this->grad_evec_mm[i][k][0][1](1)*evk[2] + evk[1]*this->grad_evec_mm[i][k][0][1](2))*this->LPLP_H_Reci_Aux[j][k][5]	// 2xy
+											     + 2.*(this->grad_evec_mm[i][k][0][1](1)*evk[3] + evk[1]*this->grad_evec_mm[i][k][0][1](3))*this->LPLP_H_Reci_Aux[j][k][6]	// 2xz
+											     +    (this->grad_evec_mm[i][k][0][1](2)*evk[2] + evk[2]*this->grad_evec_mm[i][k][0][1](2))*this->LPLP_H_Reci_Aux[j][k][7]	//  yy
+											     + 2.*(this->grad_evec_mm[i][k][0][1](2)*evk[3] + evk[2]*this->grad_evec_mm[i][k][0][1](3))*this->LPLP_H_Reci_Aux[j][k][8]	//  yz
+											     +    (this->grad_evec_mm[i][k][0][1](3)*evk[3] + evk[3]*this->grad_evec_mm[i][k][0][1](3))*this->LPLP_H_Reci_Aux[j][k][9] );	//  zz
+
+									dh_matrix_tmp[2] += (     (this->grad_evec_mm[i][k][0][2](0)*evk[0] + evk[0]*this->grad_evec_mm[i][k][0][2](0))*this->LPLP_H_Reci_Aux[j][k][0]	//  ss
+											     + 2.*(this->grad_evec_mm[i][k][0][2](0)*evk[1] + evk[0]*this->grad_evec_mm[i][k][0][2](1))*this->LPLP_H_Reci_Aux[j][k][1]	// 2sx
+											     + 2.*(this->grad_evec_mm[i][k][0][2](0)*evk[2] + evk[0]*this->grad_evec_mm[i][k][0][2](2))*this->LPLP_H_Reci_Aux[j][k][2]	// 2sy
+											     + 2.*(this->grad_evec_mm[i][k][0][2](0)*evk[3] + evk[0]*this->grad_evec_mm[i][k][0][2](3))*this->LPLP_H_Reci_Aux[j][k][3]	// 2sz
+											     +    (this->grad_evec_mm[i][k][0][2](1)*evk[1] + evk[1]*this->grad_evec_mm[i][k][0][2](1))*this->LPLP_H_Reci_Aux[j][k][4]	//  xx
+											     + 2.*(this->grad_evec_mm[i][k][0][2](1)*evk[2] + evk[1]*this->grad_evec_mm[i][k][0][2](2))*this->LPLP_H_Reci_Aux[j][k][5]	// 2xy
+											     + 2.*(this->grad_evec_mm[i][k][0][2](1)*evk[3] + evk[1]*this->grad_evec_mm[i][k][0][2](3))*this->LPLP_H_Reci_Aux[j][k][6]	// 2xz
+											     +    (this->grad_evec_mm[i][k][0][2](2)*evk[2] + evk[2]*this->grad_evec_mm[i][k][0][2](2))*this->LPLP_H_Reci_Aux[j][k][7]	//  yy
+											     + 2.*(this->grad_evec_mm[i][k][0][2](2)*evk[3] + evk[2]*this->grad_evec_mm[i][k][0][2](3))*this->LPLP_H_Reci_Aux[j][k][8]	//  yz
+											     +    (this->grad_evec_mm[i][k][0][2](3)*evk[3] + evk[3]*this->grad_evec_mm[i][k][0][2](3))*this->LPLP_H_Reci_Aux[j][k][9] );	//  zz
+
+								
+								}// end : if( k != j )
+
+							}// end : if( C.AtomList[k] == "lone" )
+
+						}// end : for(int k=0;k<C.NumberOfAtoms;k++) // (k) .eq. beta
+						
+						// DO SOMETHING ... CPHF to update evec derivatives - not Implemented
+						dh_matrix_tmp[0].setZero(); dh_matrix_tmp[1].setZero(); dh_matrix_tmp[2].setZero();
+
+					}// end : if( C.AtomList[j]->type == "lone" )
+
+				}// end : for(int j=0;j<C.NumberOfAtoms;j++) // (j) .eq. alpha
+
+			}// end : if( C.AtomList[i]->type == "core" )
+
+		}// end : for(int i=0;i<C.NumberOfAtoms;i++) // differentiate with (i)
+
+	}// end : for(cyc)
+	return;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ////	////	////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////
 
 ////	LonePair_StrainDerivative
+
+////	////	////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////    ////
 
 void Manager::StrainLonePairDerivativeReal( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector )
 {

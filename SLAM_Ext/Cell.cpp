@@ -12,6 +12,8 @@
 #include "Cell.hpp"
 #include "Manager.hpp"
 
+#define GEO_DERIVATIVE_DEBUG
+
 std::string currentDateTime()
 {
 	std::time_t t = std::time(nullptr);
@@ -752,17 +754,36 @@ void Cell::CalcLonePairCoulombEnergy()
 
 void Cell::CalcLonePairCoulombDerivative()
 {
+	using std::cout; using std::endl;
+	int delimiter_cnt = 0;
+	const int delimiter_max = 6;
+	std::chrono::duration<double> pair_wtime;
+	std::chrono::duration<double> real_wtime;
+	std::chrono::duration<double> reci_wtime;
+
 	Manager manager;			// Managing Interactions + Calculations
 	Eigen::Vector3d trans;			// Lattice Translation Vector
 	Eigen::Vector3d delta_rij, delta_r;	// Interatomic Diatance
 
 	manager.InitialiseLonePairCalculation_Derivatives(*this);
 
-	auto start = std::chrono::system_clock::now();
+	cout << "---------------------------------------------------------------------------------------------------------" << endl;
+	cout << endl;
+	cout << "	Start Geometric Derivative Calculations" << endl;
+	cout << endl;
+	cout << "---------------------------------------------------------------------------------------------------------" << endl;
+	cout << endl;
+	cout << "   Real space evaluation starts" << endl;
+	cout << endl;
+
+	auto real_sta = std::chrono::system_clock::now();
 
 	for(int i=0;i<this->NumberOfAtoms;i++)
 	{	for(int j=0;j<this->NumberOfAtoms;j++)
-		{	for(int h = -this->h_max ; h <= this->h_max ; h++)
+		{	
+			auto pair_sta = std::chrono::system_clock::now();
+
+			for(int h = -this->h_max ; h <= this->h_max ; h++)
 			{	for(int k = -this->k_max ; k <= this->k_max ; k++)
 				{	for(int l = -this->l_max ; l <= this->l_max ; l++)
 					{
@@ -793,17 +814,42 @@ void Cell::CalcLonePairCoulombDerivative()
 					}// end l
 				}// end k
 			}//end h
+
+			auto pair_end = std::chrono::system_clock::now();
+			pair_wtime = pair_end - pair_sta;
+			// BLOCK OUTPUT
+			printf("  (%d/%d)%6.3lfs",i+1,j+1,pair_wtime.count());
+			// BLOCK OUTPUT
+			if( delimiter_cnt == delimiter_max ){ delimiter_cnt = 0; cout << endl; }
+			else { delimiter_cnt++; }
+
 		}// end j
 	}// end i
-	auto end = std::chrono::system_clock::now();
 
+	delimiter_cnt = 0;
 
+	auto real_end = std::chrono::system_clock::now();
 
-	start = std::chrono::system_clock::now();
+	// BLOCK OUTPUT
+	cout << endl;
+
+	cout << endl;
+	real_wtime = real_end - real_sta;
+	cout << "   Real H deravative calculation wtime: " << real_wtime.count() << " s" << endl;
+	cout << endl;
+	cout << " *********************** " << endl;
+	cout << endl;
+	cout << "   Reciprocal space evaluation starts" << endl;
+	cout << endl;
+	// BLOCK OUTPUT
+	auto reci_sta = std::chrono::system_clock::now();
 
 	for(int i=0;i<this->NumberOfAtoms;i++)
 	{	for(int j=0;j<this->NumberOfAtoms;j++)
-		{	for(int h = -this->ih_max ; h <= this->ih_max ; h++)
+		{	
+			auto pair_sta = std::chrono::system_clock::now();
+
+			for(int h = -this->ih_max ; h <= this->ih_max ; h++)
 			{	for(int k = -this->ik_max ; k <= this->ik_max ; k++)
 				{	for(int l = -this->il_max ; l <= this->il_max ; l++)
 					{
@@ -831,10 +877,59 @@ void Cell::CalcLonePairCoulombDerivative()
 					}// end l
 				}// end k
 			}//end h
+
+			auto pair_end = std::chrono::system_clock::now();
+			pair_wtime = pair_end - pair_sta;
+	
+			// BLOCK OUTPUT
+			printf("  (%d/%d)%6.3lfs",i+1,j+1,pair_wtime.count());
+			// BLOCK OUTPUT
+			
+			if( delimiter_cnt == delimiter_max ){ delimiter_cnt = 0; cout << endl; }
+			else { delimiter_cnt++; }
+
 		}// end j
 	}// end i
 
-	end = std::chrono::system_clock::now();
+	// BLOCK OUTPUT
+	delimiter_cnt = 0;
+
+	auto reci_end = std::chrono::system_clock::now();
+	cout << endl;
+
+	cout << endl;
+	reci_wtime = reci_end - reci_sta;
+	cout << "   Reci/Self H derivative calculation wtime: " << reci_wtime.count() << " s" << endl;
+	cout << endl;
+	cout << " *********************** " << endl;
+	cout << endl;
+
+
+#ifdef GEO_DERIVATIVE_DEBUG
+/*	Storage for H derivatives
+Eigen::Matrix4d LPC_H_Real_Derivative[MX_C][MX_C][2][3];        // [i][j][0:core,1:shell][0:x,1:y,2:z] for 'i'---->'j' ... convention
+Eigen::Matrix4d LPLP_H_Real_Derivative[MX_C][MX_C][3];
+
+Eigen::Matrix4d LP_H_Self_Derivative[MX_C][3];
+
+Eigen::Matrix4d LPC_H_Reci_Derivative[MX_C][MX_C][2][3];
+Eigen::Matrix4d LPLP_H_Reci_Derivative[MX_C][MX_C][3];
+
+Eigen::Vector3d LPC_H_Real_gd[MX_C][2]; // Temopral geometric derivative (gs) saving
+Eigen::Vector3d LPLP_H_Real_gd[MX_C];
+Eigen::Vector3d LPC_H_Reci_gd[MX_C][2];
+Eigen::Vector3d LPLP_H_Reci_gd[MX_C];
+*/
+	
+
+
+
+
+
+
+
+#endif
+
 
 	// Convert raw geometric derivative -> internal geometric derivative
 	for(int i=0;i<this->NumberOfAtoms;i++)

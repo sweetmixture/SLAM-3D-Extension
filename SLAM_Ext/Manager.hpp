@@ -80,7 +80,7 @@ Eigen::Matrix4d LPLP_H_Reci[MX_C][MX_C];
 //scf_dh_x_matrix_vs_sp_ion_dipole
 // Saving Dipole - Dipole interaction term for later Geometric Derivative Calculations
 Eigen::Matrix4d LPLP_H_Real_Aux[MX_C][MX_C][3];	// [0..2] : [0] x, [1] y, [2] z; - Important for calculating eigenvector derivatives - There are three unique terms to be kept
-Eigen::Matrix4d LPLP_H_Reci_Aux[MX_C][MX_C][10]; // There are four unique terms to be kept .. ss, sx, sy, sz, xx, xy, xz, yy, yz, zz
+Eigen::Matrix4d LPLP_H_Reci_Aux[MX_C][MX_C][10]; // There are four unique terms to be kept .. ss, sx, sy, sz, xx, xy, xz, yy, yz, zz .. ss, sx, sy, sz, xx, xy, xz, yy, yz, zz
 
 // Saving EigenVector (Coefficient) Derivatives
 Eigen::Vector4d LP_Evec_Derivative[MX_C][MX_C][2];
@@ -99,9 +99,6 @@ Eigen::Vector3d LPC_H_Real_gd[MX_C][2];	// Temopral geometric derivative (gs) sa
 Eigen::Vector3d LPLP_H_Real_gd[MX_C];
 Eigen::Vector3d LPC_H_Reci_gd[MX_C][2];
 Eigen::Vector3d LPLP_H_Reci_gd[MX_C];
-//Eigen::Matrix4d LPLP_H_Real_x[MX_C][MX_C];	// Save Dipolar   Contribution LP <---> LP
-//Eigen::Matrix4d LPLP_H_Real_y[MX_C][MX_C];
-//Eigen::Matrix4d LPLP_H_Real_z[MX_C][MX_C];
 
 std::vector<double> man_scf_lp_eval;		// For the Use of SCF
 std::vector<double> man_scf_lp_real_energy;
@@ -167,8 +164,8 @@ void set_h_matrix_real( Cell& C, const int i, const int j, const Eigen::Vector3d
 void support_h_matrix_reci( const LonePair* lp, const Eigen::Vector3d& G, /* workspace */ Eigen::Matrix4d (&h_mat_ws)[2], /* out */ Eigen::Matrix4d (&h_mat_out)[2] );
 void set_h_matrix_reci( Cell& C, const int i, const int j, const Eigen::Vector3d& G, const bool is_first_scf );
 
-void set_h_matrix_real_derivative( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector, const bool is_first_iter );
-void set_h_matrix_reci_derivative( Cell& C, const int i, const int j, const Eigen::Vector3d& G, const bool is_first_iter );
+void set_h_matrix_real_derivative( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector );
+void set_h_matrix_reci_derivative( Cell& C, const int i, const int j, const Eigen::Vector3d& G );
 
 
 
@@ -177,6 +174,11 @@ void CoulombLonePairReal( Cell& C, const int i, const int j, const Eigen::Vector
 void CoulombLonePairSelf( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector, const bool is_first_scf );
 void CoulombLonePairReci( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector, const bool is_first_scf );
 
+Eigen::Vector4d grad_evec_mm_aux[MX_C][MX_C][2][3];
+Eigen::Vector4d grad_evec_mm[MX_C][MX_C][2][3];
+Eigen::Vector4d grad_evec_lp_aux[MX_C][MX_C][3];
+Eigen::Vector4d grad_evec_lp[MX_C][MX_C][3];	
+void grad_evec_cart_solver( Cell& C );
 void CoulombLonePairDerivativeReal( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector );
 void CoulombLonePairDerivativeSelf( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector );
 void CoulombLonePairDerivativeReci( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector );
