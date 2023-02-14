@@ -921,11 +921,11 @@ Eigen::Vector3d LPC_H_Reci_gd[MX_C][2];
 Eigen::Vector3d LPLP_H_Reci_gd[MX_C];
 */
 	
+	cout << " Test Geo Derivative " << endl;
+	manager.grad_evec_cart_solver(*this);
 
 
-
-
-
+	manager.LonePairDerivativeCorrection(*this);
 
 
 #endif

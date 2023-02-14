@@ -178,10 +178,12 @@ Eigen::Vector4d grad_evec_mm_aux[MX_C][MX_C][2][3];
 Eigen::Vector4d grad_evec_mm[MX_C][MX_C][2][3];
 Eigen::Vector4d grad_evec_lp_aux[MX_C][MX_C][3];
 Eigen::Vector4d grad_evec_lp[MX_C][MX_C][3];	
+void grad_evec_cart_solver_support( Cell& C, const Eigen::Matrix4d (&dh_matrix)[3], const int i /* differentiate with */, const int j /* tar */, const int mode );
 void grad_evec_cart_solver( Cell& C );
 void CoulombLonePairDerivativeReal( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector );
 void CoulombLonePairDerivativeSelf( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector );
 void CoulombLonePairDerivativeReci( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector );
+void LonePairDerivativeCorrection( Cell& C );
 
 void StrainLonePairDerivativeReal( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector );
 void StrainLonePairDerivativeSelf( Cell& C, const int i, const int j, const Eigen::Vector3d& TransVector );

@@ -12,6 +12,11 @@
 #define IS_NAN
 #define BOOST_MEMO	// INTEGRAL BOOST - SCF - Memoization scheme
 
+int kDelta( const int u, const int v )
+{	if( u == v ){ return 1; }
+	else{ return 0; }
+}
+
 void ShowMatrix( const Eigen::Matrix4d& m )
 {
 	for(int i=0;i<4;i++)
@@ -3278,8 +3283,67 @@ void Manager::CoulombLonePairDerivativeReci( Cell& C, const int i, const int j, 
  * void GetEvecGS( double (&v)[4] )
  */
 
+void Manager::grad_evec_cart_solver_support( Cell& C, const Eigen::Matrix4d (&dh_matrix)[3], const int i /* differentiate with */, const int j /* tar */, const int mode )
+{
+	LonePair* lpj = static_cast<LonePair*>(C.AtomList[j]);
+	const int gs = lpj->GetGSIndex();	//static_cast<LonePair*>(C.AtomList[j])->GetGSIndex();
+	double de[3] = {0.,0.,0.};
+	double dc[3] = {0.,0.,0.};
+	// eval : lpj->GetEval(i);
+	// evec : lpj->GetEvec(i,j); where (j): n, state, and (i): s(0), px(1), py(2), pz(3)
 
+	/* parameter 'mode'
 
+	*/ 
+
+	// Calculating dEj/dxi ... (j) .eq. alpha
+	
+	for(int u=0;u<4;u++)
+	{	for(int v=0;v<4;v++)
+		{
+			de[0] += lpj->GetEvec(u,gs)*lpj->GetEvec(v,gs)*dh_matrix[0](u,v);
+			de[1] += lpj->GetEvec(u,gs)*lpj->GetEvec(v,gs)*dh_matrix[1](u,v);
+			de[2] += lpj->GetEvec(u,gs)*lpj->GetEvec(v,gs)*dh_matrix[2](u,v);
+		}
+	}
+
+	for(int r=0;r<4;r++) // loop: s px py pz of (j .eq. alpha) subscript .eq. gamma(r)
+	{
+		for(int m=0;m<4;m++) // loop: states
+		{
+			if( m != gs )	// m != gs (n) .eq. ground state
+			{
+				for(int u=0;u<4;u++)
+				{	for(int v=0;v<4;v++)
+					{	// CPHF equation
+						dc[0] += ( lpj->GetEvec(u,m) * lpj->GetEvec(r,m) / ( lpj->GetEval(m) - lpj->GetEval(gs) ) ) * ( lpj->GetEvec(v,gs) * de[0] * kDelta(u,v) - lpj->GetEvec(v,gs) * dh_matrix[0](u,v) );
+						dc[1] += ( lpj->GetEvec(u,m) * lpj->GetEvec(r,m) / ( lpj->GetEval(m) - lpj->GetEval(gs) ) ) * ( lpj->GetEvec(v,gs) * de[1] * kDelta(u,v) - lpj->GetEvec(v,gs) * dh_matrix[1](u,v) );
+						dc[2] += ( lpj->GetEvec(u,m) * lpj->GetEvec(r,m) / ( lpj->GetEval(m) - lpj->GetEval(gs) ) ) * ( lpj->GetEvec(v,gs) * de[2] * kDelta(u,v) - lpj->GetEvec(v,gs) * dh_matrix[2](u,v) );
+
+					}// v
+				}// y
+			}// cond: m!=gs
+		}// m
+	
+		if( mode == 0 ) // if 'i' is LP
+		{
+			this->grad_evec_lp_aux[i][j][0](r) = dc[0]; // deruvatuve of cj_r w.r.t xi
+			this->grad_evec_lp_aux[i][j][1](r) = dc[1];
+			this->grad_evec_lp_aux[i][j][2](r) = dc[2];
+		}
+		if( mode == 1 ) // if 'i' is mm core
+		{
+			this->grad_evec_mm_aux[i][j][0][0](r) = dc[0];
+			this->grad_evec_mm_aux[i][j][0][1](r) = dc[1];
+			this->grad_evec_mm_aux[i][j][0][2](r) = dc[2];
+		}
+
+		dc[0] = dc[1] = dc[2] = 0.; // reset
+
+	}// end r
+
+	return;
+}
 
 void Manager::grad_evec_cart_solver( Cell& C )
 {
@@ -3307,7 +3371,6 @@ void Manager::grad_evec_cart_solver( Cell& C )
 			}
 		}
 	}
-
 
 	/*
 		Using Jacobi-Iteration Method
@@ -3440,7 +3503,7 @@ void Manager::grad_evec_cart_solver( Cell& C )
 							}// end : for(int k=0;k<C.NumberOfAtoms;k++) // versus LP
 
 							// DO_SOMETHING ... CPHF to update evec derivatives - not Implemented
-
+							Manager::grad_evec_cart_solver_support( C, dh_matrix_tmp, i, j, 0 );
 							dh_matrix_tmp[0].setZero(); dh_matrix_tmp[1].setZero(); dh_matrix_tmp[2].setZero();
 
 						}// end : if( i == j )
@@ -3530,6 +3593,7 @@ void Manager::grad_evec_cart_solver( Cell& C )
 							}// end : for(int k=0;k<C.NumberOfAtoms;k++) // versus other LP Centres
 
 							// DO SOMETHING ... CPHF to update evec derivatives - not Implemented
+							Manager::grad_evec_cart_solver_support( C, dh_matrix_tmp, i, j, 0 );
 							dh_matrix_tmp[0].setZero(); dh_matrix_tmp[1].setZero(); dh_matrix_tmp[2].setZero();
 
 						}// end : if( i != j )
@@ -3636,6 +3700,7 @@ void Manager::grad_evec_cart_solver( Cell& C )
 						}// end : for(int k=0;k<C.NumberOfAtoms;k++) // (k) .eq. beta
 						
 						// DO SOMETHING ... CPHF to update evec derivatives - not Implemented
+						Manager::grad_evec_cart_solver_support( C, dh_matrix_tmp, i, j, 1 );
 						dh_matrix_tmp[0].setZero(); dh_matrix_tmp[1].setZero(); dh_matrix_tmp[2].setZero();
 
 					}// end : if( C.AtomList[j]->type == "lone" )
@@ -3646,12 +3711,62 @@ void Manager::grad_evec_cart_solver( Cell& C )
 
 		}// end : for(int i=0;i<C.NumberOfAtoms;i++) // differentiate with (i)
 
+		/*
+ 			Evec Derivative update
+			
+			grad_evec_lp[i][j][3](c) / grad_evec_lp_aux[i][j][3](c)
+
+			grad_evec_mm[i][j][2][3](c) / grad_evec_mm_aux[i][j][2][3](c)
+		*/
+
+		for(int i=0;i<C.NumberOfAtoms;i++)
+		{	if( C.AtomList[i]->type == "lone" )
+			{	for(int j=0;j<C.NumberOfAtoms;j++)
+				{	if( C.AtomList[j]->type == "lone" )
+					{	for(int k=0;k<3;k++)
+						{	for(int c=0;c<4;c++)
+							{
+								ssqr += pow(this->grad_evec_lp_aux[i][j][k](c)-this->grad_evec_lp[i][j][k](c),2.);
+								this->grad_evec_lp[i][j][k](c) = this->grad_evec_lp_aux[i][j][k](c);
+							}
+						}
+					}
+				}
+			}
+		}
+
+		for(int i=0;i<C.NumberOfAtoms;i++)
+		{	if( C.AtomList[i]->type == "core" )
+			{	for(int j=0;j<C.NumberOfAtoms;j++)
+				{	if( C.AtomList[j]->type == "lone" )
+					{	for(int k=0;k<3;k++)
+						{	for(int c=0;c<4;c++)
+							{
+								ssqr += pow(this->grad_evec_mm_aux[i][j][0][k](c)-this->grad_evec_mm[i][j][0][k](c),2.);
+								this->grad_evec_mm[i][j][0][k](c) = this->grad_evec_mm_aux[i][j][0][k](c);
+							}
+						}
+					}
+				}
+			}
+		}
+
+		ssqr = sqrt(ssqr)/(3.*C.NumberOfAtoms);
+		printf("%d%20.12lf\n",cyc+1,ssqr);
+
+		if( ssqr < 10E-12 ){ break; }	// testing tolerance
+		ssqr = 0.;
+
 	}// end : for(cyc)
 	return;
 }
 
 
+void Manager::LonePairDerivativeCorrection( Cell& C )
+{
 
+	return;
+}
 
 
 

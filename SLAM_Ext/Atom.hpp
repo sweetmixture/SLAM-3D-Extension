@@ -362,7 +362,7 @@ public:
 
 	int GetGSIndex() { return this->lp_gs_index; }
 	double GetEval( const int i ){ return this->lp_eigensolver.eigenvalues()[i].real(); }				// Get (i) Eval
-	double GetEvec( const int i, const int j ){ return this->lp_eigensolver.eigenvectors()(i,j).real(); }		// Get (i,j) Evec ---> 'j' is a state
+	double GetEvec( const int i, const int j ){ return this->lp_eigensolver.eigenvectors()(i,j).real(); }		// Get (i,j) Evec ---> 'j' is a state: (n) , and 'i' : s(0), px(1), py(2), pz(3)
 	void GetEvecGS( double (&v)[4] )
 	{	v[0] = this->GetEvec(0,this->GetGSIndex());
 		v[1] = this->GetEvec(1,this->GetGSIndex());
