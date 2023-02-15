@@ -95,10 +95,7 @@ Eigen::Matrix4d LP_H_Self_Derivative[MX_C][3];
 Eigen::Matrix4d LPC_H_Reci_Derivative[MX_C][MX_C][2][3];
 Eigen::Matrix4d LPLP_H_Reci_Derivative[MX_C][MX_C][3];
 
-Eigen::Vector3d LPC_H_Real_gd[MX_C][2];	// Temopral geometric derivative (gs) saving
-Eigen::Vector3d LPLP_H_Real_gd[MX_C];
-Eigen::Vector3d LPC_H_Reci_gd[MX_C][2];
-Eigen::Vector3d LPLP_H_Reci_gd[MX_C];
+Eigen::Matrix4d DerivativeH[3];	// for temporal saving
 
 std::vector<double> man_scf_lp_eval;		// For the Use of SCF
 std::vector<double> man_scf_lp_real_energy;

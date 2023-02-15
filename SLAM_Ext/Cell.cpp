@@ -923,8 +923,6 @@ Eigen::Vector3d LPLP_H_Reci_gd[MX_C];
 	
 	cout << " Test Geo Derivative " << endl;
 	manager.grad_evec_cart_solver(*this);
-
-
 	manager.LonePairDerivativeCorrection(*this);
 
 
@@ -1088,12 +1086,12 @@ void Cell::ShowEnergyDerivative() const
 	cout << "    Geometric Derivatives            (eV/Angs)\n";
 	cout << "---------------------------------------------------------------------------------------------------------\n";
 	for(int i=0;i<this->NumberOfAtoms;i++)
-	{	printf("%6.4s\t%12.6lf\t%12.6lf\t%12.6lf\n",this->AtomList[i]->species.c_str(),this->AtomList[i]->cart_gd(0),this->AtomList[i]->cart_gd(1),this->AtomList[i]->cart_gd(2));
+	{	printf("%6.4s\t%20.12lf\t%20.12lf\t%20.12lf\n",this->AtomList[i]->species.c_str(),this->AtomList[i]->cart_gd(0),this->AtomList[i]->cart_gd(1),this->AtomList[i]->cart_gd(2));
 	}
 	for(int i=0;i<this->NumberOfAtoms;i++)
 	{	if( !AtomList[i]->type.compare("shel") )
 		{
-		printf("%6.4s\t%12.6lf\t%12.6lf\t%12.6lf\n",this->AtomList[i]->species.c_str(),
+		printf("%6.4s\t%20.12lf\t%20.12lf\t%20.12lf\n",this->AtomList[i]->species.c_str(),
 				static_cast<Shell*>(this->AtomList[i])->shel_cart_gd(0),
 				static_cast<Shell*>(this->AtomList[i])->shel_cart_gd(1),
 				static_cast<Shell*>(this->AtomList[i])->shel_cart_gd(2));
@@ -1103,12 +1101,12 @@ void Cell::ShowEnergyDerivative() const
 	cout << "    Internal Geometric Derivatives   (eV)\n"; // Lattice Matrix * Grad(i) E\n";
 	cout << "---------------------------------------------------------------------------------------------------------\n";
 	for(int i=0;i<this->NumberOfAtoms;i++)
-	{	printf("%6.4s\t%12.6lf\t%12.6lf\t%12.6lf\n",this->AtomList[i]->species.c_str(),this->AtomList[i]->cart_gd_int(0),this->AtomList[i]->cart_gd_int(1),this->AtomList[i]->cart_gd_int(2));
+	{	printf("%6.4s\t%20.12lf\t%20.12lf\t%20.12lf\n",this->AtomList[i]->species.c_str(),this->AtomList[i]->cart_gd_int(0),this->AtomList[i]->cart_gd_int(1),this->AtomList[i]->cart_gd_int(2));
 	}
 	for(int i=0;i<this->NumberOfAtoms;i++)
 	{	if( !AtomList[i]->type.compare("shel") )
 		{
-		printf("%6.4s\t%12.6lf\t%12.6lf\t%12.6lf\n",this->AtomList[i]->species.c_str(),
+		printf("%6.4s\t%20.12lf\t%20.12lf\t%20.12lf\n",this->AtomList[i]->species.c_str(),
 				static_cast<Shell*>(this->AtomList[i])->shel_cart_gd_int(0),
 				static_cast<Shell*>(this->AtomList[i])->shel_cart_gd_int(1),
 				static_cast<Shell*>(this->AtomList[i])->shel_cart_gd_int(2));
