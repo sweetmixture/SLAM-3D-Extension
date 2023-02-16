@@ -2361,11 +2361,12 @@ void Manager::set_h_matrix_reci( Cell& C, const int i, const int j, const Eigen:
 
 			Qi  = lp->lp_charge;
 			Qj  = C.AtomList[j]->charge;
-			Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;
+			//Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;
+			Rij = C.AtomList[i]->cart - C.AtomList[j]->cart;
 
 			factor    = C.TO_EV * (2.*M_PI/C.volume)*(Qi*Qj)*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr;	// halved leading term
-			intact[0] = cos(Rij.adjoint()*G);
-			intact[1] = sin(Rij.adjoint()*G);
+			intact[0] = cos(Rij.adjoint()*G); // (Ri-Rj).G
+			intact[1] = sin(Rij.adjoint()*G); // (Ri-Rj).G
 			
 			// Evaluation
 			Manager::support_h_matrix_reci( lp, G, this->man_matrix4d_h_reci_ws, this->man_matrix4d_h_reci_out );	// man_matrix4d_h_reci_ws/out[0-1] : 0 cosine 1 sine	// return unit ... dimensionless
@@ -2386,9 +2387,10 @@ void Manager::set_h_matrix_reci( Cell& C, const int i, const int j, const Eigen:
 		Qi  = C.AtomList[i]->charge;
 		Qj  = lp->lp_charge;
 		Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;
+		//Rij = C.AtomList[i]->cart - C.AtomList[j]->cart;
 
 		factor    = C.TO_EV * (2.*M_PI/C.volume)*(Qi*Qj)*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr;	// halved leading term	// Unit (eV)
-		intact[0] = cos(Rij.adjoint()*G);
+		intact[0] = cos(Rij.adjoint()*G); // (Rj-Ri).G
 		intact[1] = sin(Rij.adjoint()*G);
 
 		// Evaluation
@@ -2448,7 +2450,8 @@ void Manager::set_h_matrix_reci( Cell& C, const int i, const int j, const Eigen:
 		// <1> Core W.R.T LP Density 
 		Qi  = C.AtomList[i]->charge;
 		Qj  = lp->lp_charge;
-		Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;
+		//Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;
+		Rij = C.AtomList[i]->cart - C.AtomList[j]->cart;
 
 		factor    = C.TO_EV * (2.*M_PI/C.volume)*(Qi*Qj)*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr;	// halved leading term
 		intact[0] = cos(Rij.adjoint()*G);
@@ -2497,7 +2500,8 @@ void Manager::set_h_matrix_reci( Cell& C, const int i, const int j, const Eigen:
 			// LP   Core	
 			Qi  = lpi->lp_charge;
 			Qj  = C.AtomList[j]->charge;
-			Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;
+			//Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;
+			Rij = C.AtomList[i]->cart - C.AtomList[j]->cart;
 
 			factor    = C.TO_EV * (2.*M_PI/C.volume)*(Qi*Qj)*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr;	// halved leading term
 			intact[0] = cos(Rij.adjoint()*G);
@@ -2510,7 +2514,8 @@ void Manager::set_h_matrix_reci( Cell& C, const int i, const int j, const Eigen:
 		// (2) Core LP
 		Qi  = C.AtomList[i]->charge;
 		Qj  = lpj->lp_charge;
-		Rij = C.AtomList[i]->cart - C.AtomList[j]->cart;
+		//Rij = C.AtomList[i]->cart - C.AtomList[j]->cart;
+		Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;
 
 		factor    = C.TO_EV * (2.*M_PI/C.volume)*(Qi*Qj)*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr;	// halved leading term
 		intact[0] = cos(Rij.adjoint()*G);
@@ -2531,7 +2536,8 @@ void Manager::set_h_matrix_reci( Cell& C, const int i, const int j, const Eigen:
 		// (3) LP   LP
 		Qi  = lpi->lp_charge;
 		Qj  = lpj->lp_charge;
-		Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;
+		//Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;
+		Rij = C.AtomList[i]->cart - C.AtomList[j]->cart;
 
 		factor    = C.TO_EV * (2.*M_PI/C.volume)*(Qi*Qj)*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr;	// halved leading term
 		intact[0] = cos(Rij.adjoint()*G);
@@ -3130,7 +3136,8 @@ void Manager::CoulombLonePairDerivativeSelf( Cell& C, const int i, const int j, 
 				D(2) += lpi_cf[u]*lpi_cf[v]*this->DerivativeH[2](u,v);
 			}
 		}
-		C.AtomList[i]->cart_gd += D;
+		C.AtomList[i]->cart_gd += D;	// j -> i limit
+		C.AtomList[j]->cart_gd -= D;	// i -> j limit
 	}
 }       
 
@@ -3154,23 +3161,26 @@ void Manager::set_h_matrix_reci_derivative( Cell& C, const int i, const int j, c
 
 		Qi  = lpi->lp_charge;
 		Qj  = C.AtomList[j]->charge;
-		Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;	// Ri(LP-Core) -----> Rj(MM-Core) ... i.e.,( Rj - Ri )
+		//Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;	// Ri(LP-Core) -----> Rj(MM-Core) ... i.e.,( Rj - Ri )
+		Rij = C.AtomList[i]->cart - C.AtomList[j]->cart;	
 	
 		factor = C.TO_EV * (2.*M_PI/C.volume)*(Qi*Qj)*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr;
-		intact[0] = cos(Rij.adjoint()*G); // cos{(Rj-Ri).G}
-		intact[1] = sin(Rij.adjoint()*G); // sin{(Rj-Ri).G}
+		//intact[0] = cos(Rij.adjoint()*G); // cos{(Rj-Ri).G}
+		//intact[1] = sin(Rij.adjoint()*G); // sin{(Rj-Ri).G}
+		intact[0] = cos(Rij.adjoint()*G); // cos{(Ri-Rj).G}
+		intact[1] = sin(Rij.adjoint()*G); // sin{(Ri-Rj).G}
 
 		Manager::support_h_matrix_reci(lpi,G,this->man_matrix4d_h_reci_ws,this->man_matrix4d_h_reci_out); // man_matrix4d_h_reci_ws/out [0..1] : 0 cosine / 1 sine ... return unit dimensionless
 
 		// grad taken for (j)
-		LPC_H_Reci_Derivative[i][j][0][0] -= (factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(0) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(0) ));
-		LPC_H_Reci_Derivative[i][j][0][1] -= (factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(1) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(1) ));
-		LPC_H_Reci_Derivative[i][j][0][2] -= (factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(2) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(2) ));
+		LPC_H_Reci_Derivative[i][j][0][0] -= (factor*( this->man_matrix4d_h_reci_out[0]*(intact[1])*G(0) - this->man_matrix4d_h_reci_out[1]*-intact[0]*G(0) ));
+		LPC_H_Reci_Derivative[i][j][0][1] -= (factor*( this->man_matrix4d_h_reci_out[0]*(intact[1])*G(1) - this->man_matrix4d_h_reci_out[1]*-intact[0]*G(1) ));
+		LPC_H_Reci_Derivative[i][j][0][2] -= (factor*( this->man_matrix4d_h_reci_out[0]*(intact[1])*G(2) - this->man_matrix4d_h_reci_out[1]*-intact[0]*G(2) ));
 
 		// derivative update
-		this->DerivativeH[0] = -(factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(0) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(0) ));
-		this->DerivativeH[1] = -(factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(1) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(1) ));
-		this->DerivativeH[2] = -(factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(2) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(2) ));
+		this->DerivativeH[0] = -(factor*( this->man_matrix4d_h_reci_out[0]*(intact[1])*G(0) - this->man_matrix4d_h_reci_out[1]*-intact[0]*G(0) ));
+		this->DerivativeH[1] = -(factor*( this->man_matrix4d_h_reci_out[0]*(intact[1])*G(1) - this->man_matrix4d_h_reci_out[1]*-intact[0]*G(1) ));
+		this->DerivativeH[2] = -(factor*( this->man_matrix4d_h_reci_out[0]*(intact[1])*G(2) - this->man_matrix4d_h_reci_out[1]*-intact[0]*G(2) ));
 		lpi->GetEvecGS(lpi_cf);
 		for(int u=0;u<4;u++)
 		{	for(int v=0;v<4;v++)
@@ -3189,23 +3199,26 @@ void Manager::set_h_matrix_reci_derivative( Cell& C, const int i, const int j, c
 		
 		Qi  = C.AtomList[i]->charge;
 		Qj  = lpj->lp_charge;
-		Rij = C.AtomList[i]->cart - C.AtomList[j]->cart;	// Rj(LP-Core) -----> Ri(MM-Core) ... i.e., ( Ri - Rj )
+		//Rij = C.AtomList[i]->cart - C.AtomList[j]->cart;	// Rj(LP-Core) -----> Ri(MM-Core) ... i.e., ( Ri - Rj )
+		Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;	
 
 		factor = C.TO_EV * (2.*M_PI/C.volume)*(Qi*Qj)*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr;
-		intact[0] = cos(Rij.adjoint()*G); // cos{(Ri-Rj).G}
-		intact[1] = sin(Rij.adjoint()*G); // sin{(Ri-Rj).G}
+		//intact[0] = cos(Rij.adjoint()*G); // cos{(Ri-Rj).G}
+		//intact[1] = sin(Rij.adjoint()*G); // sin{(Ri-Rj).G}
+		intact[0] = cos(Rij.adjoint()*G); // cos{(Rj-Ri).G}
+		intact[1] = sin(Rij.adjoint()*G); // sin{(Rj-Ri).G}
 
 		Manager::support_h_matrix_reci(lpj,G,this->man_matrix4d_h_reci_ws,this->man_matrix4d_h_reci_out); // man_matrix4d_h_reci_ws/out [0..1] : 0 cosine / 1 sine ... return unit dimensionless
 
 		// grad taken for (i)
-		LPC_H_Reci_Derivative[j][i][0][0] -= (factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(0) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(0) ));
-		LPC_H_Reci_Derivative[j][i][0][1] -= (factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(1) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(1) ));
-		LPC_H_Reci_Derivative[j][i][0][2] -= (factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(2) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(2) ));
+		LPC_H_Reci_Derivative[j][i][0][0] -= (factor*( this->man_matrix4d_h_reci_out[0]*(intact[1])*G(0) - this->man_matrix4d_h_reci_out[1]*-intact[0]*G(0) ));
+		LPC_H_Reci_Derivative[j][i][0][1] -= (factor*( this->man_matrix4d_h_reci_out[0]*(intact[1])*G(1) - this->man_matrix4d_h_reci_out[1]*-intact[0]*G(1) ));
+		LPC_H_Reci_Derivative[j][i][0][2] -= (factor*( this->man_matrix4d_h_reci_out[0]*(intact[1])*G(2) - this->man_matrix4d_h_reci_out[1]*-intact[0]*G(2) ));
 
 		// derivative update
-		this->DerivativeH[0] = -(factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(0) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(0) ));
-		this->DerivativeH[1] = -(factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(1) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(1) ));
-		this->DerivativeH[2] = -(factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(2) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(2) ));
+		this->DerivativeH[0] = -(factor*( this->man_matrix4d_h_reci_out[0]*(intact[1])*G(0) - this->man_matrix4d_h_reci_out[1]*-intact[0]*G(0) ));
+		this->DerivativeH[1] = -(factor*( this->man_matrix4d_h_reci_out[0]*(intact[1])*G(1) - this->man_matrix4d_h_reci_out[1]*-intact[0]*G(1) ));
+		this->DerivativeH[2] = -(factor*( this->man_matrix4d_h_reci_out[0]*(intact[1])*G(2) - this->man_matrix4d_h_reci_out[1]*-intact[0]*G(2) ));
 		lpj->GetEvecGS(lpj_cf);
 		for(int u=0;u<4;u++)
 		{	for(int v=0;v<4;v++)
@@ -3234,23 +3247,26 @@ void Manager::set_h_matrix_reci_derivative( Cell& C, const int i, const int j, c
 		// LPi (LP) -----> LPj (Core)
 		Qi  = lpi->lp_charge;
 		Qj  = C.AtomList[j]->charge;
-		Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;
+		//Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;
+		Rij = C.AtomList[i]->cart - C.AtomList[j]->cart;
 
 		factor = C.TO_EV * (2.*M_PI/C.volume)*(Qi*Qj)*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr;
-		intact[0] = cos(Rij.adjoint()*G); // cos{(Rj-Ri).G}
-		intact[1] = sin(Rij.adjoint()*G); // sin{(Rj-Ri).G}
+		//intact[0] = cos(Rij.adjoint()*G); // cos{(Rj-Ri).G}
+		//intact[1] = sin(Rij.adjoint()*G); // sin{(Rj-Ri).G}
+		intact[0] = cos(Rij.adjoint()*G); // cos{(Ri-Rj).G}
+		intact[1] = sin(Rij.adjoint()*G); // sin{(Ri-Rj).G}
 
 		Manager::support_h_matrix_reci(lpi,G,this->man_matrix4d_h_reci_ws,this->man_matrix4d_h_reci_out); // man_matrix4d_h_reci_ws/out [0..1] : 0 cosine / 1 sine ... return unit dimensionless
 
 		// grad taken for (j)
-		LPC_H_Reci_Derivative[i][j][0][0] -= (factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(0) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(0) ));
-		LPC_H_Reci_Derivative[i][j][0][1] -= (factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(1) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(1) ));
-		LPC_H_Reci_Derivative[i][j][0][2] -= (factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(2) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(2) ));
+		LPC_H_Reci_Derivative[i][j][0][0] -= (factor*( this->man_matrix4d_h_reci_out[0]*(intact[1])*G(0) - this->man_matrix4d_h_reci_out[1]*-intact[0]*G(0) ));
+		LPC_H_Reci_Derivative[i][j][0][1] -= (factor*( this->man_matrix4d_h_reci_out[0]*(intact[1])*G(1) - this->man_matrix4d_h_reci_out[1]*-intact[0]*G(1) ));
+		LPC_H_Reci_Derivative[i][j][0][2] -= (factor*( this->man_matrix4d_h_reci_out[0]*(intact[1])*G(2) - this->man_matrix4d_h_reci_out[1]*-intact[0]*G(2) ));
 
 		// derivative update
-		this->DerivativeH[0] = -(factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(0) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(0) ));
-		this->DerivativeH[1] = -(factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(1) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(1) ));
-		this->DerivativeH[2] = -(factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(2) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(2) ));
+		this->DerivativeH[0] = -(factor*( this->man_matrix4d_h_reci_out[0]*(intact[1])*G(0) - this->man_matrix4d_h_reci_out[1]*-intact[0]*G(0) ));
+		this->DerivativeH[1] = -(factor*( this->man_matrix4d_h_reci_out[0]*(intact[1])*G(1) - this->man_matrix4d_h_reci_out[1]*-intact[0]*G(1) ));
+		this->DerivativeH[2] = -(factor*( this->man_matrix4d_h_reci_out[0]*(intact[1])*G(2) - this->man_matrix4d_h_reci_out[1]*-intact[0]*G(2) ));
 		lpi->GetEvecGS(lpi_cf);
 		for(int u=0;u<4;u++)
 		{	for(int v=0;v<4;v++)
@@ -3265,23 +3281,26 @@ void Manager::set_h_matrix_reci_derivative( Cell& C, const int i, const int j, c
 		// LPi (Core) <----- LPj (LP)
 		Qi  = C.AtomList[i]->charge;
 		Qj  = lpj->lp_charge;
-		Rij = C.AtomList[i]->cart - C.AtomList[j]->cart;
+		//Rij = C.AtomList[i]->cart - C.AtomList[j]->cart;
+		Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;
 
 		factor = C.TO_EV * (2.*M_PI/C.volume)*(Qi*Qj)*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr;
-		intact[0] = cos(Rij.adjoint()*G); // cos{(Ri-Rj).G}
-		intact[1] = sin(Rij.adjoint()*G); // sin{(Ri-Rj).G}
+		//intact[0] = cos(Rij.adjoint()*G); // cos{(Ri-Rj).G}
+		//intact[1] = sin(Rij.adjoint()*G); // sin{(Ri-Rj).G}
+		intact[0] = cos(Rij.adjoint()*G); // cos{(Rj-Ri).G}
+		intact[1] = sin(Rij.adjoint()*G); // sin{(Rj-Ri).G}
 
 		Manager::support_h_matrix_reci(lpj,G,this->man_matrix4d_h_reci_ws,this->man_matrix4d_h_reci_out); // man_matrix4d_h_reci_ws/out [0..1] : 0 cosine / 1 sine ... return unit dimensionless
 
 		// grad taken for (i) 
-		LPC_H_Reci_Derivative[j][i][0][0] -= (factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(0) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(0) ));
-		LPC_H_Reci_Derivative[j][i][0][1] -= (factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(1) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(1) ));
-		LPC_H_Reci_Derivative[j][i][0][2] -= (factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(2) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(2) ));
+		LPC_H_Reci_Derivative[j][i][0][0] -= (factor*( this->man_matrix4d_h_reci_out[0]*(intact[1])*G(0) - this->man_matrix4d_h_reci_out[1]*-intact[0]*G(0) ));
+		LPC_H_Reci_Derivative[j][i][0][1] -= (factor*( this->man_matrix4d_h_reci_out[0]*(intact[1])*G(1) - this->man_matrix4d_h_reci_out[1]*-intact[0]*G(1) ));
+		LPC_H_Reci_Derivative[j][i][0][2] -= (factor*( this->man_matrix4d_h_reci_out[0]*(intact[1])*G(2) - this->man_matrix4d_h_reci_out[1]*-intact[0]*G(2) ));
 
 		// derivative update
-		this->DerivativeH[0] = -(factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(0) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(0) ));
-		this->DerivativeH[1] = -(factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(1) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(1) ));
-		this->DerivativeH[2] = -(factor*( this->man_matrix4d_h_reci_out[0]*(-intact[1])*G(2) - this->man_matrix4d_h_reci_out[1]*intact[0]*G(2) ));
+		this->DerivativeH[0] = -(factor*( this->man_matrix4d_h_reci_out[0]*(intact[1])*G(0) - this->man_matrix4d_h_reci_out[1]*-intact[0]*G(0) ));
+		this->DerivativeH[1] = -(factor*( this->man_matrix4d_h_reci_out[0]*(intact[1])*G(1) - this->man_matrix4d_h_reci_out[1]*-intact[0]*G(1) ));
+		this->DerivativeH[2] = -(factor*( this->man_matrix4d_h_reci_out[0]*(intact[1])*G(2) - this->man_matrix4d_h_reci_out[1]*-intact[0]*G(2) ));
 		lpj->GetEvecGS(lpj_cf);
 		for(int u=0;u<4;u++)
 		{	for(int v=0;v<4;v++)
@@ -3296,30 +3315,33 @@ void Manager::set_h_matrix_reci_derivative( Cell& C, const int i, const int j, c
 		// LPi -----> LPj	// Ref? lpj->GetEvecGS( lpj_cf );
 		Qi  = lpi->lp_charge;
 		Qj  = lpj->lp_charge;
-		Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;
+		//Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;	// Rj - Ri
+		Rij = C.AtomList[i]->cart - C.AtomList[j]->cart;	// Rj - Ri
 
 		lpj->GetEvecGS( lpj_cf ); // get cf of (j)
 
 		factor = C.TO_EV * (2.*M_PI/C.volume)*(Qi*Qj)*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr;
-		intact[0] = cos(Rij.adjoint()*G); // cos{(Rj-Ri).G}
-		intact[1] = sin(Rij.adjoint()*G); // sin{(Rj-Ri).G}
+		//intact[0] = cos(Rij.adjoint()*G); // cos{(Rj-Ri).G}
+		//intact[1] = sin(Rij.adjoint()*G); // sin{(Rj-Ri).G}
+		intact[0] = cos(Rij.adjoint()*G); // cos{(Ri-Rj).G}
+		intact[1] = sin(Rij.adjoint()*G); // sin{(Ri-Rj).G}
 
 		Manager::support_h_matrix_reci(lpi,G,this->man_matrix4d_h_reci_ws,this->man_matrix4d_h_reci_out); // man_matrix4d_h_reci_ws/out [0..1] : 0 cosine / 1 sine ... return unit dimensionless
 
-		// grad taken for (i)
+		// grad taken for (j)
 		for(int u=0;u<4;u++)
 		{	for(int v=0;v<4;v++)
 			{	for(int l=0;l<4;l++)
 				{	for(int s=0;s<4;s++)
 					{
-					  this->LPLP_H_Reci_Derivative[i][j][0](u,v) -= factor*(lpj_cf[l]*lpj_cf[s]*(this->man_matrix4d_h_reci_out[0](l,s)*(-intact[1]*G(0)*this->man_matrix4d_h_reci_out[0](u,v) - intact[0]*G(0)*this->man_matrix4d_h_reci_out[1](u,v))
-					  									    +this->man_matrix4d_h_reci_out[1](l,s)*(-intact[1]*G(0)*this->man_matrix4d_h_reci_out[1](u,v) + intact[0]*G(0)*this->man_matrix4d_h_reci_out[0](u,v))));
+		  this->LPLP_H_Reci_Derivative[i][j][0](u,v) -= factor*(lpj_cf[l]*lpj_cf[s]*(this->man_matrix4d_h_reci_out[0](l,s)*(intact[1]*G(0)*this->man_matrix4d_h_reci_out[0](u,v) - (-intact[0])*G(0)*this->man_matrix4d_h_reci_out[1](u,v))
+											    +this->man_matrix4d_h_reci_out[1](l,s)*(intact[1]*G(0)*this->man_matrix4d_h_reci_out[1](u,v) + (-intact[0])*G(0)*this->man_matrix4d_h_reci_out[0](u,v))));
 
-					  this->LPLP_H_Reci_Derivative[i][j][1](u,v) -= factor*(lpj_cf[l]*lpj_cf[s]*(this->man_matrix4d_h_reci_out[0](l,s)*(-intact[1]*G(1)*this->man_matrix4d_h_reci_out[0](u,v) - intact[0]*G(1)*this->man_matrix4d_h_reci_out[1](u,v))
-					  			 						    +this->man_matrix4d_h_reci_out[1](l,s)*(-intact[1]*G(1)*this->man_matrix4d_h_reci_out[1](u,v) + intact[0]*G(1)*this->man_matrix4d_h_reci_out[0](u,v))));	
+		  this->LPLP_H_Reci_Derivative[i][j][1](u,v) -= factor*(lpj_cf[l]*lpj_cf[s]*(this->man_matrix4d_h_reci_out[0](l,s)*(intact[1]*G(1)*this->man_matrix4d_h_reci_out[0](u,v) - (-intact[0])*G(1)*this->man_matrix4d_h_reci_out[1](u,v))
+											    +this->man_matrix4d_h_reci_out[1](l,s)*(intact[1]*G(1)*this->man_matrix4d_h_reci_out[1](u,v) + (-intact[0])*G(1)*this->man_matrix4d_h_reci_out[0](u,v))));	
 
-					  this->LPLP_H_Reci_Derivative[i][j][2](u,v) -= factor*(lpj_cf[l]*lpj_cf[s]*(this->man_matrix4d_h_reci_out[0](l,s)*(-intact[1]*G(2)*this->man_matrix4d_h_reci_out[0](u,v) - intact[0]*G(2)*this->man_matrix4d_h_reci_out[1](u,v))
-					  			 						    +this->man_matrix4d_h_reci_out[1](l,s)*(-intact[1]*G(2)*this->man_matrix4d_h_reci_out[1](u,v) + intact[0]*G(2)*this->man_matrix4d_h_reci_out[0](u,v))));	
+		  this->LPLP_H_Reci_Derivative[i][j][2](u,v) -= factor*(lpj_cf[l]*lpj_cf[s]*(this->man_matrix4d_h_reci_out[0](l,s)*(intact[1]*G(2)*this->man_matrix4d_h_reci_out[0](u,v) - (-intact[0])*G(2)*this->man_matrix4d_h_reci_out[1](u,v))
+											    +this->man_matrix4d_h_reci_out[1](l,s)*(intact[1]*G(2)*this->man_matrix4d_h_reci_out[1](u,v) + (-intact[0])*G(2)*this->man_matrix4d_h_reci_out[0](u,v))));	
 					}
 				}
 			}
@@ -3332,14 +3354,14 @@ void Manager::set_h_matrix_reci_derivative( Cell& C, const int i, const int j, c
 			{	for(int l=0;l<4;l++)
 				{	for(int s=0;s<4;s++)
 					{
-					  this->DerivativeH[0](u,v) -= factor*(lpj_cf[l]*lpj_cf[s]*(this->man_matrix4d_h_reci_out[0](l,s)*(-intact[1]*G(0)*this->man_matrix4d_h_reci_out[0](u,v) - intact[0]*G(0)*this->man_matrix4d_h_reci_out[1](u,v))
-												   +this->man_matrix4d_h_reci_out[1](l,s)*(-intact[1]*G(0)*this->man_matrix4d_h_reci_out[1](u,v) + intact[0]*G(0)*this->man_matrix4d_h_reci_out[0](u,v))));
+				  this->DerivativeH[0](u,v) -= factor*(lpj_cf[l]*lpj_cf[s]*(this->man_matrix4d_h_reci_out[0](l,s)*(intact[1]*G(0)*this->man_matrix4d_h_reci_out[0](u,v) - (-intact[0])*G(0)*this->man_matrix4d_h_reci_out[1](u,v))
+											   +this->man_matrix4d_h_reci_out[1](l,s)*(intact[1]*G(0)*this->man_matrix4d_h_reci_out[1](u,v) + (-intact[0])*G(0)*this->man_matrix4d_h_reci_out[0](u,v))));
 
-					  this->DerivativeH[1](u,v) -= factor*(lpj_cf[l]*lpj_cf[s]*(this->man_matrix4d_h_reci_out[0](l,s)*(-intact[1]*G(1)*this->man_matrix4d_h_reci_out[0](u,v) - intact[0]*G(1)*this->man_matrix4d_h_reci_out[1](u,v))
-												   +this->man_matrix4d_h_reci_out[1](l,s)*(-intact[1]*G(1)*this->man_matrix4d_h_reci_out[1](u,v) + intact[0]*G(1)*this->man_matrix4d_h_reci_out[0](u,v))));	
+				  this->DerivativeH[1](u,v) -= factor*(lpj_cf[l]*lpj_cf[s]*(this->man_matrix4d_h_reci_out[0](l,s)*(intact[1]*G(1)*this->man_matrix4d_h_reci_out[0](u,v) - (-intact[0])*G(1)*this->man_matrix4d_h_reci_out[1](u,v))
+											   +this->man_matrix4d_h_reci_out[1](l,s)*(intact[1]*G(1)*this->man_matrix4d_h_reci_out[1](u,v) + (-intact[0])*G(1)*this->man_matrix4d_h_reci_out[0](u,v))));	
 
-					  this->DerivativeH[2](u,v) -= factor*(lpj_cf[l]*lpj_cf[s]*(this->man_matrix4d_h_reci_out[0](l,s)*(-intact[1]*G(2)*this->man_matrix4d_h_reci_out[0](u,v) - intact[0]*G(2)*this->man_matrix4d_h_reci_out[1](u,v))
-												   +this->man_matrix4d_h_reci_out[1](l,s)*(-intact[1]*G(2)*this->man_matrix4d_h_reci_out[1](u,v) + intact[0]*G(2)*this->man_matrix4d_h_reci_out[0](u,v))));	
+				  this->DerivativeH[2](u,v) -= factor*(lpj_cf[l]*lpj_cf[s]*(this->man_matrix4d_h_reci_out[0](l,s)*(intact[1]*G(2)*this->man_matrix4d_h_reci_out[0](u,v) - (-intact[0])*G(2)*this->man_matrix4d_h_reci_out[1](u,v))
+											   +this->man_matrix4d_h_reci_out[1](l,s)*(intact[1]*G(2)*this->man_matrix4d_h_reci_out[1](u,v) + (-intact[0])*G(2)*this->man_matrix4d_h_reci_out[0](u,v))));	
 					}
 				}
 			}
@@ -4057,6 +4079,9 @@ void Manager::LonePairDerivativeCorrection( Cell& C )
 		C.AtomList[i]->cart_gd(0) += dcorr[0];
 		C.AtomList[i]->cart_gd(1) += dcorr[1];
 		C.AtomList[i]->cart_gd(2) += dcorr[2];
+
+		//printf("Check-1\n");
+		//printf("%10.4lf\t%10.4lf\t%10.4lf\n",dcorr[0],dcorr[1],dcorr[2]);
 		
 		dcorr[0] = dcorr[1] = dcorr[2] = 0.;
 	}// end : for(int i=0;i<C.NumberOfAtoms;i++)
@@ -4145,6 +4170,9 @@ void Manager::LonePairDerivativeCorrection( Cell& C )
 		C.AtomList[i]->cart_gd(1) += dcorr[1];
 		C.AtomList[i]->cart_gd(2) += dcorr[2];
 		
+		//printf("Check-2\n");
+		//printf("%10.4lf\t%10.4lf\t%10.4lf\n",dcorr[0],dcorr[1],dcorr[2]);
+	
 		dcorr[0] = dcorr[1] = dcorr[2] = 0.;
 	}// end : for(int i=0;i<C.NumberOfAtoms;i++)
 
