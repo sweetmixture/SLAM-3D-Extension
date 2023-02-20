@@ -128,6 +128,7 @@ double LonePairMatrix_H::real_position_integral( const std::vector<double>& inte
 	}
 	
 	// distance unit
+	//printf("%lf\t\t\t\t\t",res*TO_BOHR_RADII);
 	return res*TO_BOHR_RADII;	// Bohr ---> Angstrom
 }
 

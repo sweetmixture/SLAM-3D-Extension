@@ -1384,12 +1384,12 @@ void Manager::StrainDerivativeReci( Cell& C, const int i, const int j, const Eig
 
 		// Strain derivative (1) - w.r.t. r_vector in the reciprocal space
 		C.lattice_sd(0,0) += intact[0]*intact[1] * TransVector(0) * Rij(0);	C.lattice_sd(0,1) += intact[0]*intact[1] * TransVector(0) * Rij(1);	C.lattice_sd(0,2) += intact[0]*intact[1] * TransVector(0) * Rij(2);
-											C.lattice_sd(1,1) += intact[0]*intact[1] * TransVector(1) * Rij(1);	C.lattice_sd(1,2) += intact[0]*intact[1] * TransVector(1) * Rij(2);
-																				C.lattice_sd(2,2) += intact[0]*intact[1] * TransVector(2) * Rij(2);
+											                                C.lattice_sd(1,1) += intact[0]*intact[1] * TransVector(1) * Rij(1);	C.lattice_sd(1,2) += intact[0]*intact[1] * TransVector(1) * Rij(2);
+																			                                                                    C.lattice_sd(2,2) += intact[0]*intact[1] * TransVector(2) * Rij(2);
 		// Strain derivative (2) - w.r.t. g_vector in the reciprocal space
 		C.lattice_sd(0,0) += intact[0]*(intact[2]*TransVector(0)-intact[3]*Rij(0))*-TransVector(0);	C.lattice_sd(0,1) += intact[0]*(intact[2]*TransVector(1)-intact[3]*Rij(1))*-TransVector(0);	C.lattice_sd(0,2) += intact[0]*(intact[2]*TransVector(2)-intact[3]*Rij(2))*-TransVector(0);
-														C.lattice_sd(1,1) += intact[0]*(intact[2]*TransVector(1)-intact[3]*Rij(1))*-TransVector(1);	C.lattice_sd(1,2) += intact[0]*(intact[2]*TransVector(2)-intact[3]*Rij(2))*-TransVector(1);
-																										C.lattice_sd(2,2) += intact[0]*(intact[2]*TransVector(2)-intact[3]*Rij(2))*-TransVector(2);
+														                                            C.lattice_sd(1,1) += intact[0]*(intact[2]*TransVector(1)-intact[3]*Rij(1))*-TransVector(1);	C.lattice_sd(1,2) += intact[0]*(intact[2]*TransVector(2)-intact[3]*Rij(2))*-TransVector(1);
+																									 C.lattice_sd(2,2) += intact[0]*(intact[2]*TransVector(2)-intact[3]*Rij(2))*-TransVector(2);
 		// Strain derivative (3) - w.r.t cell volume in the reciprocal space
 		C.lattice_sd(0,0) += -intact[0]*intact[4];	C.lattice_sd(1,1) += -intact[0]*intact[4];	C.lattice_sd(2,2) += -intact[0]*intact[4];
         }       
@@ -2361,7 +2361,6 @@ void Manager::set_h_matrix_reci( Cell& C, const int i, const int j, const Eigen:
 
 			Qi  = lp->lp_charge;
 			Qj  = C.AtomList[j]->charge;
-			//Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;
 			Rij = C.AtomList[i]->cart - C.AtomList[j]->cart;
 
 			factor    = C.TO_EV * (2.*M_PI/C.volume)*(Qi*Qj)*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr;	// halved leading term
@@ -2387,7 +2386,6 @@ void Manager::set_h_matrix_reci( Cell& C, const int i, const int j, const Eigen:
 		Qi  = C.AtomList[i]->charge;
 		Qj  = lp->lp_charge;
 		Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;
-		//Rij = C.AtomList[i]->cart - C.AtomList[j]->cart;
 
 		factor    = C.TO_EV * (2.*M_PI/C.volume)*(Qi*Qj)*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr;	// halved leading term	// Unit (eV)
 		intact[0] = cos(Rij.adjoint()*G); // (Rj-Ri).G
@@ -2412,7 +2410,7 @@ void Manager::set_h_matrix_reci( Cell& C, const int i, const int j, const Eigen:
 			// <1> W.R.T CorePart (PI)
 			Qi  = lp->lp_charge;
 			Qj  = C.AtomList[j]->charge;
-			Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;
+			Rij = C.AtomList[i]->cart - C.AtomList[j]->cart;
 
 			factor    = C.TO_EV * (2.*M_PI/C.volume)*(Qi*Qj)*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr;	// halved leading term
 			intact[0] = cos(Rij.adjoint()*G);
@@ -2425,7 +2423,7 @@ void Manager::set_h_matrix_reci( Cell& C, const int i, const int j, const Eigen:
 			// <2> W.R.T ShelPart (PI)
 			Qi  = lp->lp_charge;
 			Qj  = static_cast<Shell*>(C.AtomList[j])->shel_charge;
-			Rij = static_cast<Shell*>(C.AtomList[j])->shel_cart - C.AtomList[i]->cart;
+			Rij = C.AtomList[i]->cart - static_cast<Shell*>(C.AtomList[j])->shel_cart;
 
 			factor    = C.TO_EV * (2.*M_PI/C.volume)*(Qi*Qj)*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr;	// halved leading term
 			intact[0] = cos(Rij.adjoint()*G);
@@ -2450,8 +2448,7 @@ void Manager::set_h_matrix_reci( Cell& C, const int i, const int j, const Eigen:
 		// <1> Core W.R.T LP Density 
 		Qi  = C.AtomList[i]->charge;
 		Qj  = lp->lp_charge;
-		//Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;
-		Rij = C.AtomList[i]->cart - C.AtomList[j]->cart;
+		Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;
 
 		factor    = C.TO_EV * (2.*M_PI/C.volume)*(Qi*Qj)*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr;	// halved leading term
 		intact[0] = cos(Rij.adjoint()*G);
@@ -2468,7 +2465,7 @@ void Manager::set_h_matrix_reci( Cell& C, const int i, const int j, const Eigen:
 		// <2> Shel W.R.T LP Density
 		Qi  = static_cast<Shell*>(C.AtomList[i])->shel_charge;
 		Qj  = lp->lp_charge;
-		Rij = static_cast<Shell*>(C.AtomList[i])->shel_cart - C.AtomList[j]->cart;
+		Rij = C.AtomList[j]->cart - static_cast<Shell*>(C.AtomList[i])->shel_cart;
 
 		factor    = C.TO_EV * (2.*M_PI/C.volume)*(Qi*Qj)*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr;	// halved leading term
 		intact[0] = cos(Rij.adjoint()*G);
@@ -2500,7 +2497,6 @@ void Manager::set_h_matrix_reci( Cell& C, const int i, const int j, const Eigen:
 			// LP   Core	
 			Qi  = lpi->lp_charge;
 			Qj  = C.AtomList[j]->charge;
-			//Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;
 			Rij = C.AtomList[i]->cart - C.AtomList[j]->cart;
 
 			factor    = C.TO_EV * (2.*M_PI/C.volume)*(Qi*Qj)*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr;	// halved leading term
@@ -2514,7 +2510,6 @@ void Manager::set_h_matrix_reci( Cell& C, const int i, const int j, const Eigen:
 		// (2) Core LP
 		Qi  = C.AtomList[i]->charge;
 		Qj  = lpj->lp_charge;
-		//Rij = C.AtomList[i]->cart - C.AtomList[j]->cart;
 		Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;
 
 		factor    = C.TO_EV * (2.*M_PI/C.volume)*(Qi*Qj)*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr;	// halved leading term
@@ -2536,7 +2531,6 @@ void Manager::set_h_matrix_reci( Cell& C, const int i, const int j, const Eigen:
 		// (3) LP   LP
 		Qi  = lpi->lp_charge;
 		Qj  = lpj->lp_charge;
-		//Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;
 		Rij = C.AtomList[i]->cart - C.AtomList[j]->cart;
 
 		factor    = C.TO_EV * (2.*M_PI/C.volume)*(Qi*Qj)*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr;	// halved leading term
@@ -2949,6 +2943,9 @@ void Manager::set_h_matrix_real_derivative( Cell& C, const int i, const int j, c
 		Manager::support_h_matrix_real_derivative2(lpi,C.sigma,Rij,man_matrix4d_h_real_derivative2_ws,man_matrix4d_h_real_derivative2_out);	// *_out[0-5] .. xx,xy,xz,yy,yz,zz
 		factor = 0.5 * lpi->lp_charge * lpj->lp_charge;
 
+		lpi->GetEvecGS(lpi_cf);
+		lpj->GetEvecGS(lpj_cf);
+
 		// For (i) 
 		LPLP_H_Real_Derivative[i][j][0] -= ((factor*lpj->lp_real_position_integral) * ( man_matrix4d_h_real_derivative2_out[0]*(2.*lpj_cf[0]*lpj_cf[1]) 	// 0 xx
 											      + man_matrix4d_h_real_derivative2_out[1]*(2.*lpj_cf[0]*lpj_cf[2])		// 1 xy
@@ -3161,7 +3158,6 @@ void Manager::set_h_matrix_reci_derivative( Cell& C, const int i, const int j, c
 
 		Qi  = lpi->lp_charge;
 		Qj  = C.AtomList[j]->charge;
-		//Rij = C.AtomList[j]->cart - C.AtomList[i]->cart;	// Ri(LP-Core) -----> Rj(MM-Core) ... i.e.,( Rj - Ri )
 		Rij = C.AtomList[i]->cart - C.AtomList[j]->cart;	
 	
 		factor = C.TO_EV * (2.*M_PI/C.volume)*(Qi*Qj)*exp(-0.25*C.sigma*C.sigma*g_sqr)/g_sqr;
