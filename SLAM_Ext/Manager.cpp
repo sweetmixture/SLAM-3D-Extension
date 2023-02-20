@@ -2310,7 +2310,31 @@ void Manager::CoulombLonePairSelf( Cell& C, const int i, const int j, const Eige
 			this->man_matrix4d_h_reci_self_ws(2,2) = this->man_matrix4d_h_reci_self_ws(3,3) = this->man_matrix4d_h_reci_self_ws(1,1);
 			//this->LPLP_H_Reci[i][j] += factor * this->man_matrix4d_h_reci_self_ws;
 			this->LPC_H_Reci[i][j][0] += factor * this->man_matrix4d_h_reci_self_ws;
+
+			this->LPC_H_Reci_Self[i] = factor * this->man_matrix4d_h_reci_self_ws;
 		}
+		else	//DEBUGGING_FEB_20_2023
+		{
+			LonePair* lpi = static_cast<LonePair*>(C.AtomList[i]);
+			Qi = lpi->lp_charge;
+			Qj = C.AtomList[j]->charge;
+			factor = -0.5 * (Qi*Qj) * 2.;
+			double en = 0.;
+			double lpi_cf[4];
+			lpi->GetEvecGS(lpi_cf);
+			for(int u=0;u<4;u++)
+			{	for(int v=0;v<4;v++)
+				{
+					en += lpi_cf[u]*lpi_cf[v]*factor*this->LPC_H_Reci_Self[i](u,v);
+				}
+			}
+			std::cout << std::endl;
+			std::cout << "LPC Self (" << i << ") ---------------------------------------------\n";
+			printf("%20.12lf\n",en);
+			std::cout << "--------------------------------------------------------------------\n";
+		}
+
+
 	}
 
 	return;
@@ -3133,6 +3157,12 @@ void Manager::CoulombLonePairDerivativeSelf( Cell& C, const int i, const int j, 
 				D(2) += lpi_cf[u]*lpi_cf[v]*this->DerivativeH[2](u,v);
 			}
 		}
+
+std::cout << std::endl;
+std::cout << "SelfD------------------------------------------------------------------\n";
+printf("%20.12lf\t%20.12lf\t%20.12lf\n",D(0),D(1),D(2));
+std::cout << "-----------------------------------------------------------------------\n";
+
 		C.AtomList[i]->cart_gd += D;	// j -> i limit
 		C.AtomList[j]->cart_gd -= D;	// i -> j limit
 	}

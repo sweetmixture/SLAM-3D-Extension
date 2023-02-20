@@ -77,6 +77,8 @@ Eigen::Matrix4d LPLP_H_Real[MX_C][MX_C];	// Save Monopolar Contribution LP <--->
 Eigen::Matrix4d LPC_H_Reci[MX_C][MX_C][2];	// same convention ... if 'i=j' with h'=k'=l' - reciprocal self (i.e., lone pair electron interacting with its core in the central sublattice)
 Eigen::Matrix4d LPLP_H_Reci[MX_C][MX_C];
 
+Eigen::Matrix4d LPC_H_Reci_Self[MX_C];
+
 //scf_dh_x_matrix_vs_sp_ion_dipole
 // Saving Dipole - Dipole interaction term for later Geometric Derivative Calculations
 Eigen::Matrix4d LPLP_H_Real_Aux[MX_C][MX_C][3];	// [0..2] : [0] x, [1] y, [2] z; - Important for calculating eigenvector derivatives - There are three unique terms to be kept
